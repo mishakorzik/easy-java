@@ -8,4 +8,4 @@ apt install wget
 wget https://raw.githubusercontent.com/mishakorzik/easy-java/main/install
 chmod +x install
 ./install
-``
+```

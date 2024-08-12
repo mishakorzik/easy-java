@@ -1,0 +1,794 @@
+#!/usr/bin/bash
+if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
+    if [ "$(uname -m)" != "aarch64" ]; then
+        echo "This system is not arm64 architecture."
+        exit 1
+    fi
+    if command -v proot &> /dev/null
+    then
+        echo -e "proot is \033[01;32minstalled\033[0m"
+    else
+        echo -e "proot is \033[01;31mnot\033[0m installed"
+        echo -e "installing proot"
+        pkg install proot -y
+    fi
+    if command -v debootstrap &> /dev/null
+    then
+        echo -e "debootstrap is \033[01;32minstalled\033[0m"
+    else
+        echo -e "debootstrap is \033[01;31mnot\033[0m installed"
+        echo -e "installing debootstrap"
+        pkg install debootstrap -y
+    fi
+    if command -v wget &> /dev/null
+    then
+        echo -e "wget is \033[01;32minstalled\033[0m"
+    else
+        echo -e "wget is \033[01;31mnot\033[0m installed"
+        echo -e "installing wget"
+        pkg install wget -y
+    fi
+    if command -v tar &> /dev/null
+    then
+        echo -e "tar is \033[01;32minstalled\033[0m"
+    else
+        echo -e "tar is \033[01;31mnot\033[0m installed"
+        echo -e "installing tar"
+        pkg install tar -y
+    fi
+    echo -e ""
+    echo -e "\033[01;34m01\033[0m. Oracle Java 22"
+    echo -e "\033[01;34m02\033[0m. Oracle Java 21"
+    echo -e "\033[01;34m03\033[0m. Oracle Java 20"
+    echo -e "\033[01;34m04\033[0m. Oracle Java 19"
+    echo -e "\033[01;34m05\033[0m. Oracle Java 17"
+    echo -e "\033[01;34m06\033[0m. Oracle Java 16"
+    echo -e "\033[01;34m07\033[0m. Oracle Java 15"
+    echo -e "\033[01;34m08\033[0m. Oracle Java 11"
+    echo -e "\033[01;34m09\033[0m. Oracle Java 8"
+    echo -e "\033[01;34m10\033[0m. Quit"
+
+    read -p "Choose an option: " option
+    if [ -d "$PREFIX/../java" ]; then
+        echo "skipping debian container installing"
+    else
+        echo "installing debian container. (It will take a long time)"
+        debootstrap --variant=minbase --arch=arm64 stable $PREFIX/../java http://ftp.debian.org/debian/ > /dev/null 2>&1
+        echo "verifying debian container"
+        unset LD_PRELOAD
+        if proot -0 --link2symlink -r $PREFIX/../java -w /root -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin grep -q "ID=debian" /etc/os-release; then
+            echo -e "debian container \033[01;32minstalled\033[0m"
+        else
+            rm -rf $PREFIX/../java
+            echo -e "\033[01;31mfailed\033[0m"
+            exit 1
+        fi
+    fi
+    if [ "$option" -eq 1 ]; then
+        cd /data/data/com.termux/files/java/usr/local
+        rm -rf jdk-22
+        echo "Downloading Oracle Java 22"
+        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-22-latest-aarch64_bin.tar.gz
+        echo "Extracting Oracle Java 22"
+        tar -xf jdk-22-latest-aarch64_bin.tar.gz
+        rm jdk-22-latest-aarch64_bin.tar.gz
+        echo 'alias java-22="export PATH=/usr/local/jdk-22/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
+        if [ -d "$HOME/.oh-my-zsh" ]; then
+            if grep -q "java-22()" "$HOME/.zshrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-22"
+            else
+                echo 'java-22() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-22; java $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo 'javac-22() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-22; javac $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-22"
+            fi
+        else
+            if grep -q "java-22()" "$PREFIX/etc/bash.bashrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-22"
+            else
+                echo 'java-22() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-22; java $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo 'javac-22() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-22; javac $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-22"
+            fi
+        fi
+    elif [ "$option" -eq 2 ]; then
+        cd /data/data/com.termux/files/java/usr/local
+        rm -rf jdk-21
+        echo "Downloading Oracle Java 21"
+        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-21-latest-aarch64_bin.tar.gz
+        echo "Extracting Oracle Java 21"
+        tar -xf jdk-21-latest-aarch64_bin.tar.gz
+        rm jdk-21-latest-aarch64_bin.tar.gz
+        echo 'alias java-21="export PATH=/usr/local/jdk-21/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
+        if [ -d "$HOME/.oh-my-zsh" ]; then
+            if grep -q "java-21()" "$HOME/.zshrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-21"
+            else
+                echo 'java-21() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-21; java $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo 'javac-21() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-21; javac $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-21"
+            fi
+        else
+            if grep -q "java-21()" "$PREFIX/etc/bash.bashrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-21"
+            else
+                echo 'java-21() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-21; java $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo 'javac-21() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-21; javac $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-21"
+            fi
+        fi
+    elif [ "$option" -eq 3 ]; then
+        cd /data/data/com.termux/files/java/usr/local
+        rm -rf jdk-20
+        echo "Downloading Oracle Java 20"
+        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-20-latest-aarch64_bin.tar.gz
+        echo "Extracting Oracle Java 20"
+        tar -xf jdk-20-latest-aarch64_bin.tar.gz
+        rm jdk-20-latest-aarch64_bin.tar.gz
+        echo 'alias java-20="export PATH=/usr/local/jdk-20/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
+        if [ -d "$HOME/.oh-my-zsh" ]; then
+            if grep -q "java-20()" "$HOME/.zshrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-20"
+            else
+                echo 'java-20() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-20; java $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo 'javac-20() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-20; javac $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-20"
+            fi
+        else
+            if grep -q "java-20()" "$PREFIX/etc/bash.bashrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-20"
+            else
+                echo 'java-20() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-20; java $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo 'javac-20() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-20; javac $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-20"
+            fi
+        fi
+    elif [ "$option" -eq 4 ]; then
+        cd /data/data/com.termux/files/java/usr/local
+        rm -rf jdk-19
+        echo "Downloading Oracle Java 19"
+        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-19-latest-aarch64_bin.tar.gz
+        echo "Extracting Oracle Java 19"
+        tar -xf jdk-19-latest-aarch64_bin.tar.gz
+        rm jdk-19-latest-aarch64_bin.tar.gz
+        echo 'alias java-19="export PATH=/usr/local/jdk-19/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
+        if [ -d "$HOME/.oh-my-zsh" ]; then
+            if grep -q "java-19()" "$HOME/.zshrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-19"
+            else
+                echo 'java-19() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-19; java $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo 'javac-19() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-19; javac $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-19"
+            fi
+        else
+            if grep -q "java-19()" "$PREFIX/etc/bash.bashrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-19"
+            else
+                echo 'java-19() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-19; java $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo 'javac-19() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-19; javac $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-19"
+            fi
+        fi
+    elif [ "$option" -eq 5 ]; then
+        cd /data/data/com.termux/files/java/usr/local
+        rm -rf jdk-17
+        echo "Downloading Oracle Java 17"
+        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-17-latest-aarch64_bin.tar.gz
+        echo "Extracting Oracle Java 17"
+        tar -xf jdk-17-latest-aarch64_bin.tar.gz
+        rm jdk-17-latest-aarch64_bin.tar.gz
+        echo 'alias java-17="export PATH=/usr/local/jdk-17/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
+        if [ -d "$HOME/.oh-my-zsh" ]; then
+            if grep -q "java-17()" "$HOME/.zshrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-17"
+            else
+                echo 'java-17() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-17; java $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo 'javac-17() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-17; javac $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-17"
+            fi
+        else
+            if grep -q "java-17()" "$PREFIX/etc/bash.bashrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-17"
+            else
+                echo 'java-17() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-17; java $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo 'javac-17() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-17; javac $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-17"
+            fi
+        fi
+    elif [ "$option" -eq 6 ]; then
+        cd /data/data/com.termux/files/java/usr/local
+        rm -rf jdk-16
+        echo "Downloading Oracle Java 16"
+        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-16-latest-aarch64_bin.tar.gz
+        echo "Extracting Oracle Java 16"
+        tar -xf jdk-16-latest-aarch64_bin.tar.gz
+        rm jdk-16-latest-aarch64_bin.tar.gz
+        echo 'alias java-16="export PATH=/usr/local/jdk-15/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
+        if [ -d "$HOME/.oh-my-zsh" ]; then
+            if grep -q "java-16()" "$HOME/.zshrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-16"
+            else
+                echo 'java-16() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-16; java $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo 'javac-16() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-16; javac $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-16"
+            fi
+        else
+            if grep -q "java-16()" "$PREFIX/etc/bash.bashrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-16"
+            else
+                echo 'java-16() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-16; java $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo 'javac-16() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-16; javac $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-16"
+            fi
+        fi
+    elif [ "$option" -eq 7 ]; then
+        cd /data/data/com.termux/files/java/usr/local
+        rm -rf jdk-15
+        echo "Downloading Oracle Java 15"
+        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-15-latest-aarch64_bin.tar.gz
+        echo "Extracting Oracle Java 15"
+        tar -xf jdk-15-latest-aarch64_bin.tar.gz
+        rm jdk-15-latest-aarch64_bin.tar.gz
+        echo 'alias java-15="export PATH=/usr/local/jdk-15/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
+        if [ -d "$HOME/.oh-my-zsh" ]; then
+            if grep -q "java-15()" "$HOME/.zshrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-15"
+            else
+                echo 'java-15() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-15; java $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo 'javac-15() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-15; javac $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-15"
+            fi
+        else
+            if grep -q "java-15()" "$PREFIX/etc/bash.bashrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-15"
+            else
+                echo 'java-15() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-15; java $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo 'javac-15() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-15; javac $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-15"
+            fi
+        fi
+    elif [ "$option" -eq 8 ]; then
+        cd /data/data/com.termux/files/java/usr/local
+        rm -rf jdk-11
+        echo "Downloading Oracle Java 11"
+        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-11-latest-aarch64_bin.tar.gz
+        echo "Extracting Oracle Java 11"
+        tar -xf jdk-11-latest-aarch64_bin.tar.gz
+        rm jdk-11-latest-aarch64_bin.tar.gz
+        echo 'alias java-11="export PATH=/usr/local/jdk-11/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
+        if [ -d "$HOME/.oh-my-zsh" ]; then
+            if grep -q "java-11()" "$HOME/.zshrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-11"
+            else
+                echo 'java-11() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-11; java $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo 'javac-11() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-11; javac $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-11"
+            fi
+        else
+            if grep -q "java-11()" "$PREFIX/etc/bash.bashrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-11"
+            else
+                echo 'java-11() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-11; java $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo 'javac-11() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-11; javac $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-11"
+            fi
+        fi
+    elif [ "$option" -eq 9 ]; then
+        cd /data/data/com.termux/files/java/usr/local
+        rm -rf jdk1.8.0
+        echo "Downloading Oracle Java 8"
+        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-8-latest-aarch64_bin.tar.gz
+        echo "Extracting Oracle Java 8"
+        tar -xf jdk-8-latest-aarch64_bin.tar.gz
+        rm jdk-8-latest-aarch64_bin.tar.gz
+        echo 'alias java-8="export PATH=/usr/local/jdk1.8.0/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
+        if [ -d "$HOME/.oh-my-zsh" ]; then
+            if grep -q "java-8()" "$HOME/.zshrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-8"
+            else
+                echo 'java-8() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-8; java $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo 'javac-8() {' >> $HOME/.zshrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-8; javac $*"' >> $HOME/.zshrc
+                echo '}' >> $HOME/.zshrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-8"
+            fi
+        else
+            if grep -q "java-8()" "$PREFIX/etc/bash.bashrc"; then
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-8"
+            else
+                echo 'java-8() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-8; java $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo 'javac-8() {' >> $PREFIX/etc/bash.bashrc
+                echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-8; javac $*"' >> $PREFIX/etc/bash.bashrc
+                echo '}' >> $PREFIX/etc/bash.bashrc
+                echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                echo -e "To run java, restart your shell and write in terminal: java-8"
+            fi
+        fi
+    elif [ "$option" -eq 10 ]; then
+        exit 1
+    else
+        echo "Invalid option"
+        exit 1
+    fi
+else
+    if [ "$(uname -m)" != "aarch64" ]; then
+        echo "This system is not ARM64 architecture."
+        exit 1
+    fi
+
+    if grep -q "ID=debian" /etc/os-release || grep -q "ID=ubuntu" /etc/os-release; then
+        if command -v wget &> /dev/null
+        then
+            echo -e "wget is \033[01;32minstalled\033[0m"
+        else
+            echo -e "wget is \033[01;31mnot\033[0m installed"
+            sudo apt install wget -y
+        fi
+        if command -v tar &> /dev/null
+        then
+            echo -e "tar is \033[01;32minstalled\033[0m"
+        else
+            echo -e "tar is \033[01;31mnot\033[0m installed"
+            sudo apt install tar -y
+        fi
+
+        echo -e ""
+        echo -e "\033[01;34m01\033[0m. Oracle Java 22"
+        echo -e "\033[01;34m02\033[0m. Oracle Java 21"
+        echo -e "\033[01;34m03\033[0m. Oracle Java 20"
+        echo -e "\033[01;34m04\033[0m. Oracle Java 19"
+        echo -e "\033[01;34m05\033[0m. Oracle Java 17"
+        echo -e "\033[01;34m06\033[0m. Oracle Java 16"
+        echo -e "\033[01;34m07\033[0m. Oracle Java 15"
+        echo -e "\033[01;34m08\033[0m. Oracle Java 11"
+        echo -e "\033[01;34m09\033[0m. Oracle Java 8"
+        echo -e "\033[01;34m10\033[0m. Quit"
+
+        read -p "Choose an option: " option
+        if [ "$option" -eq 1 ]; then
+            cd /usr/local
+            sudo rm -rf jdk-22
+            echo "Downloading Oracle Java 22"
+            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-22-latest-aarch64_bin.tar.gz
+            echo "Extracting Oracle Java 22"
+            sudo tar -xf jdk-22-latest-aarch64_bin.tar.gz
+            sudo rm jdk-22-latest-aarch64_bin.tar.gz
+            if [ -d "$HOME/.oh-my-zsh" ]; then
+                if grep -q "java-22()" "$HOME/.zshrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-22"
+                else
+                    echo 'java-22() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-22/bin:$PATH; java $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo 'javac-22() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-22/bin:$PATH; javac $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-22"
+                fi
+            else
+                if grep -q "java-22()" "$HOME/.bashrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-22"
+                else
+                    echo 'java-22() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-22/bin:$PATH; java $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo 'javac-22() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-22/bin:$PATH; javac $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-22"
+                fi
+            fi
+        elif [ "$option" -eq 2 ]; then
+            cd /usr/local
+            sudo rm -rf jdk-21
+            echo "Downloading Oracle Java 21"
+            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-21-latest-aarch64_bin.tar.gz
+            echo "Extracting Oracle Java 21"
+            sudo tar -xf jdk-21-latest-aarch64_bin.tar.gz
+            sudo rm jdk-21-latest-aarch64_bin.tar.gz
+            if [ -d "$HOME/.oh-my-zsh" ]; then
+                if grep -q "java-21()" "$HOME/.zshrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-21"
+                else
+                    echo 'java-21() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-21/bin:$PATH; java $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo 'javac-21() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-21/bin:$PATH; javac $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-21"
+                fi
+            else
+                if grep -q "java-21()" "$HOME/.bashrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-21"
+                else
+                    echo 'java-21() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-21/bin:$PATH; java $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo 'javac-21() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-21/bin:$PATH; javac $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-21"
+                fi
+            fi
+        elif [ "$option" -eq 3 ]; then
+            cd /usr/local
+            sudo rm -rf jdk-20
+            echo "Downloading Oracle Java 20"
+            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-20-latest-aarch64_bin.tar.gz
+            echo "Extracting Oracle Java 20"
+            sudo tar -xf jdk-20-latest-aarch64_bin.tar.gz
+            sudo rm jdk-20-latest-aarch64_bin.tar.gz
+            if [ -d "$HOME/.oh-my-zsh" ]; then
+                if grep -q "java-20()" "$HOME/.zshrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-20"
+                else
+                    echo 'java-20() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-20/bin:$PATH; java $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo 'javac-20() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-20/bin:$PATH; javac $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-20"
+                fi
+            else
+                if grep -q "java-20()" "$HOME/.bashrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-20"
+                else
+                    echo 'java-20() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-20/bin:$PATH; java $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo 'javac-20() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-20/bin:$PATH; javac $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-20"
+                fi
+            fi
+        elif [ "$option" -eq 4 ]; then
+            cd /usr/local
+            sudo rm -rf jdk-19
+            echo "Downloading Oracle Java 19"
+            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-19-latest-aarch64_bin.tar.gz
+            echo "Extracting Oracle Java 19"
+            sudo tar -xf jdk-19-latest-aarch64_bin.tar.gz
+            sudo rm jdk-19-latest-aarch64_bin.tar.gz
+            if [ -d "$HOME/.oh-my-zsh" ]; then
+                if grep -q "java-19()" "$HOME/.zshrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-19"
+                else
+                    echo 'java-19() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-19/bin:$PATH; java $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo 'javac-19() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-19/bin:$PATH; javac $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-19"
+                fi
+            else
+                if grep -q "java-19()" "$HOME/.bashrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-19"
+                else
+                    echo 'java-19() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-19/bin:$PATH; java $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo 'javac-19() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-19/bin:$PATH; javac $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-19"
+                fi
+            fi
+        elif [ "$option" -eq 5 ]; then
+            cd /usr/local
+            sudo rm -rf jdk-17
+            echo "Downloading Oracle Java 17"
+            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-17-latest-aarch64_bin.tar.gz
+            echo "Extracting Oracle Java 17"
+            sudo tar -xf jdk-17-latest-aarch64_bin.tar.gz
+            sudo rm jdk-17-latest-aarch64_bin.tar.gz
+            if [ -d "$HOME/.oh-my-zsh" ]; then
+                if grep -q "java-17()" "$HOME/.zshrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-17"
+                else
+                    echo 'java-17() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-17/bin:$PATH; java $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo 'javac-17() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-17/bin:$PATH; javac $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-17"
+                fi
+            else
+                if grep -q "java-17()" "$HOME/.bashrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-17"
+                else
+                    echo 'java-17() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-17/bin:$PATH; java $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo 'javac-17() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-17/bin:$PATH; javac $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-17"
+                fi
+            fi
+        elif [ "$option" -eq 6 ]; then
+            cd /usr/local
+            sudo rm -rf jdk-16
+            echo "Downloading Oracle Java 16"
+            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-15-latest-aarch64_bin.tar.gz
+            echo "Extracting Oracle Java 16"
+            sudo tar -xf jdk-16-latest-aarch64_bin.tar.gz
+            sudo rm jdk-16-latest-aarch64_bin.tar.gz
+            if [ -d "$HOME/.oh-my-zsh" ]; then
+                if grep -q "java-16()" "$HOME/.zshrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-16"
+                else
+                    echo 'java-16() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-16/bin:$PATH; java $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo 'javac-16() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-16/bin:$PATH; javac $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-16"
+                fi
+            else
+                if grep -q "java-16()" "$HOME/.bashrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-16"
+                else
+                    echo 'java-16() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-16/bin:$PATH; java $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo 'javac-16() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-16/bin:$PATH; javac $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-16"
+                fi
+            fi
+        elif [ "$option" -eq 7 ]; then
+            cd /usr/local
+            sudo rm -rf jdk-15
+            echo "Downloading Oracle Java 15"
+            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-15-latest-aarch64_bin.tar.gz
+            echo "Extracting Oracle Java 15"
+            sudo tar -xf jdk-15-latest-aarch64_bin.tar.gz
+            sudo rm jdk-15-latest-aarch64_bin.tar.gz
+            if [ -d "$HOME/.oh-my-zsh" ]; then
+                if grep -q "java-15()" "$HOME/.zshrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-15"
+                else
+                    echo 'java-15() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-15/bin:$PATH; java $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo 'javac-15() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-15/bin:$PATH; javac $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-15"
+                fi
+            else
+                if grep -q "java-15()" "$HOME/.bashrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-15"
+                else
+                    echo 'java-15() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-15/bin:$PATH; java $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo 'javac-15() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-15/bin:$PATH; javac $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-15"
+                fi
+            fi
+        elif [ "$option" -eq 8 ]; then
+            cd /usr/local
+            sudo rm -rf jdk-11
+            echo "Downloading Oracle Java 11"
+            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-11-latest-aarch64_bin.tar.gz
+            echo "Extracting Oracle Java 11"
+            sudo tar -xf jdk-11-latest-aarch64_bin.tar.gz
+            sudo rm jdk-11-latest-aarch64_bin.tar.gz
+            if [ -d "$HOME/.oh-my-zsh" ]; then
+                if grep -q "java-11()" "$HOME/.zshrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-11"
+                else
+                    echo 'java-11() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-11/bin:$PATH; java $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo 'javac-11() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-11/bin:$PATH; javac $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-11"
+                fi
+            else
+                if grep -q "java-11()" "$HOME/.bashrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-11"
+                else
+                    echo 'java-11() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-11/bin:$PATH; java $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo 'javac-11() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-11/bin:$PATH; javac $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-11"
+                fi
+            fi
+        elif [ "$option" -eq 9 ]; then
+            cd /usr/local
+            sudo rm -rf jdk1.8.0
+            echo "Downloading Oracle Java 8"
+            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-8-latest-aarch64_bin.tar.gz
+            echo "Extracting Oracle Java 8"
+            sudo tar -xf jdk-8-latest-aarch64_bin.tar.gz
+            sudo rm jdk-8-latest-aarch64_bin.tar.gz
+            if [ -d "$HOME/.oh-my-zsh" ]; then
+                if grep -q "java-8()" "$HOME/.zshrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-8"
+                else
+                    echo 'java-8() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk-8/bin:$PATH; java $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo 'javac-8() {' >> $HOME/.zshrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk-8/bin:$PATH; javac $*' >> $HOME/.zshrc
+                    echo '}' >> $HOME/.zshrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-8"
+                fi
+            else
+                if grep -q "java-8()" "$HOME/.bashrc"; then
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-8"
+                else
+                    echo 'java-8() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjava args\033[0m: $*"; export PATH=/usr/local/jdk1.8.0/bin:$PATH; java $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo 'javac-8() {' >> $HOME/.bashrc
+                    echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; export PATH=/usr/local/jdk1.8.0/bin:$PATH; javac $*' >> $HOME/.bashrc
+                    echo '}' >> $HOME/.bashrc
+                    echo -e "Installation completed \033[01;32msuccessfully\033[0m"
+                    echo -e "To run java, restart your shell and write in terminal: java-8"
+                fi
+            fi
+        elif [ "$option" -eq 10 ]; then
+            exit 1
+        else
+            echo "Invalid option"
+        exit 1
+        fi
+    else
+        echo "This system is not supported. Supported systems: debian, ubuntu, termux."
+        exit 1
+    fi
+fi
+

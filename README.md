@@ -28,3 +28,14 @@ cd $PREFIX/..
 rm -rf java
 
 ```
+
+### Screenshots 
+Here are screenshots of installing Java on debian and termux
+<p align="center">
+<img width="99.9%" src="https://raw.githubusercontent.com/mishakorzik/easy-java/main/Screenshot_2024-08-12-16-27-52-544_com.termux-edit.jpg"/>
+  
+<img width="99.9%" src="https://raw.githubusercontent.com/mishakorzik/easy-java/main/Screenshot_2024-08-12-16-41-13-938_com.termux-edit.jpg"/>
+
+
+
+

@@ -15,3 +15,16 @@ wget https://raw.githubusercontent.com/mishakorzik/easy-java/main/easy-java
 chmod +x easy-java
 ./easy-java
 ```
+
+### How to Uninstall
+
+```
+# if you're using debian or ubuntu
+cd /usr/local
+sudo rm -rf jdk-*
+
+# if you're using termux
+cd $PREFIX/..
+rm -rf java
+
+```

@@ -5,7 +5,7 @@ Easily install any version of java on linux system.
 
 ```
 apt install wget
-wget https://raw.githubusercontent.com/mishakorzik/easy-java/main/install
-chmod +x install
-/install
+wget https://raw.githubusercontent.com/mishakorzik/easy-java/main/easy-java
+chmod +x easy-java
+./easy-java
 ```

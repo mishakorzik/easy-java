@@ -36,6 +36,8 @@ Here are screenshots of installing Java on debian and termux
   
 <img width="99.9%" src="https://raw.githubusercontent.com/mishakorzik/easy-java/main/Screenshot_2024-08-12-16-41-13-938_com.termux-edit.jpg"/>
 
+To update Java, you just need to run the installation of the version of Java that you installed last time.
+
 
 
 

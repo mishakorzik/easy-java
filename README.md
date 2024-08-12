@@ -1,5 +1,5 @@
 ## easy-java
-Easily install any version of java on arm64 linux system.
+You can easily install the full version of Java or even multiple versions of Java and work with them at the same time, each with a different version installed. It is only supported on arm64 and Linux systems such as: debian, ubuntu and termux.
 
 ### Tool tested on
 this tool has been tested on arm64 systems such as:

@@ -1,5 +1,11 @@
-# easy-java
-Easy install Oracle Java only for arm64. Tested on termux and raspberry pi.
+## easy-java
+Easily install any version of java on linux system.
 
+### How to Install
 
-estimated release date 2024-08-12
+```
+apt install wget
+wget https://raw.githubusercontent.com/mishakorzik/easy-java/main/install
+chmod +x install
+./install
+``

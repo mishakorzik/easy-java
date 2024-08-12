@@ -1,5 +1,5 @@
 ## easy-java
-Easily install any version of java on linux system.
+Easily install any version of java on arm64 linux system.
 
 ### How to Install
 

@@ -262,7 +262,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         echo "Extracting Oracle Java 16"
         tar -xf jdk-16-latest-aarch64_bin.tar.gz
         rm jdk-16-latest-aarch64_bin.tar.gz
-        echo 'alias java-16="export PATH=/usr/local/jdk-15/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
+        echo 'alias java-16="export PATH=/usr/local/jdk-16/bin:$PATH"' >> /data/data/com.termux/files/java/root/.bashrc
         if [ -d "$HOME/.oh-my-zsh" ]; then
             if grep -q "java-16()" "$HOME/.zshrc"; then
                 echo -e "Installation completed \033[01;32msuccessfully\033[0m"

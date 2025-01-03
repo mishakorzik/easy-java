@@ -11,6 +11,8 @@ this tool has been tested on arm64 systems such as:
 
 ```
 apt install wget
+apt install python3-pip
+python3 -m pip install gdown
 wget https://raw.githubusercontent.com/mishakorzik/easy-java/main/easy-java
 chmod +x easy-java
 ./easy-java

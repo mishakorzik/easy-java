@@ -68,7 +68,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-22
         echo "Downloading Oracle Java 22"
-        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-22-latest-aarch64_bin.tar.gz
+        sudo gdown https://drive.usercontent.google.com/download?id=1jGXGcSepZkt5bKVWHyYAzJCzSXAijItu
         echo "Extracting Oracle Java 22"
         tar -xf jdk-22-latest-aarch64_bin.tar.gz
         rm jdk-22-latest-aarch64_bin.tar.gz
@@ -106,7 +106,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-21
         echo "Downloading Oracle Java 21"
-        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-21-latest-aarch64_bin.tar.gz
+        sudo gdown https://drive.usercontent.google.com/download?id=1yyRpoeL5ITOJb4K_mIHS9gCDtiY2TVLz
         echo "Extracting Oracle Java 21"
         tar -xf jdk-21-latest-aarch64_bin.tar.gz
         rm jdk-21-latest-aarch64_bin.tar.gz
@@ -144,7 +144,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-20
         echo "Downloading Oracle Java 20"
-        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-20-latest-aarch64_bin.tar.gz
+        sudo gdown https://drive.usercontent.google.com/download?id=17V6Y7khQZvt2dIvaqpI5cjVmtrQvpaQo
         echo "Extracting Oracle Java 20"
         tar -xf jdk-20-latest-aarch64_bin.tar.gz
         rm jdk-20-latest-aarch64_bin.tar.gz
@@ -182,7 +182,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-19
         echo "Downloading Oracle Java 19"
-        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-19-latest-aarch64_bin.tar.gz
+        sudo gdown https://drive.usercontent.google.com/download?id=1_lEitg91FWm4emuD1uamA7arl69MALEX
         echo "Extracting Oracle Java 19"
         tar -xf jdk-19-latest-aarch64_bin.tar.gz
         rm jdk-19-latest-aarch64_bin.tar.gz
@@ -220,7 +220,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-17
         echo "Downloading Oracle Java 17"
-        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-17-latest-aarch64_bin.tar.gz
+        sudo gdown https://drive.usercontent.google.com/download?id=1CzwHZMl7qyjIhB1E7m8xbKyxeOqQ8Fq1
         echo "Extracting Oracle Java 17"
         tar -xf jdk-17-latest-aarch64_bin.tar.gz
         rm jdk-17-latest-aarch64_bin.tar.gz
@@ -258,7 +258,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-16
         echo "Downloading Oracle Java 16"
-        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-16-latest-aarch64_bin.tar.gz
+        sudo gdown https://drive.usercontent.google.com/download?id=1xGNogkxQ22c9BGtvrK8gkWGqyvGfSr3s
         echo "Extracting Oracle Java 16"
         tar -xf jdk-16-latest-aarch64_bin.tar.gz
         rm jdk-16-latest-aarch64_bin.tar.gz
@@ -296,7 +296,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-15
         echo "Downloading Oracle Java 15"
-        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-15-latest-aarch64_bin.tar.gz
+        sudo gdown https://drive.usercontent.google.com/download?id=1FLtZKNmN0h_wSVlDRBYb6hC-vgQuZ2UE
         echo "Extracting Oracle Java 15"
         tar -xf jdk-15-latest-aarch64_bin.tar.gz
         rm jdk-15-latest-aarch64_bin.tar.gz
@@ -334,7 +334,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-11
         echo "Downloading Oracle Java 11"
-        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-11-latest-aarch64_bin.tar.gz
+        sudo gdown https://drive.usercontent.google.com/download?id=1P0luM8WZEMLFbCPDWjYIp27qytXLC9Sc
         echo "Extracting Oracle Java 11"
         tar -xf jdk-11-latest-aarch64_bin.tar.gz
         rm jdk-11-latest-aarch64_bin.tar.gz
@@ -372,7 +372,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk1.8.0
         echo "Downloading Oracle Java 8"
-        wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-8-latest-aarch64_bin.tar.gz
+        sudo gdown https://drive.usercontent.google.com/download?id=1Ey0L6dnTsuEvDNYoexc8cRbtGWANrmbL&export=download&authuser=0
         echo "Extracting Oracle Java 8"
         tar -xf jdk-8-latest-aarch64_bin.tar.gz
         rm jdk-8-latest-aarch64_bin.tar.gz
@@ -451,7 +451,7 @@ else
             cd /usr/local
             sudo rm -rf jdk-22
             echo "Downloading Oracle Java 22"
-            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-22-latest-aarch64_bin.tar.gz
+            sudo gdown https://drive.usercontent.google.com/download?id=1jGXGcSepZkt5bKVWHyYAzJCzSXAijItu
             echo "Extracting Oracle Java 22"
             sudo tar -xf jdk-22-latest-aarch64_bin.tar.gz
             sudo rm jdk-22-latest-aarch64_bin.tar.gz
@@ -488,7 +488,7 @@ else
             cd /usr/local
             sudo rm -rf jdk-21
             echo "Downloading Oracle Java 21"
-            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-21-latest-aarch64_bin.tar.gz
+            sudo gdown https://drive.usercontent.google.com/download?id=1yyRpoeL5ITOJb4K_mIHS9gCDtiY2TVLz
             echo "Extracting Oracle Java 21"
             sudo tar -xf jdk-21-latest-aarch64_bin.tar.gz
             sudo rm jdk-21-latest-aarch64_bin.tar.gz
@@ -525,7 +525,7 @@ else
             cd /usr/local
             sudo rm -rf jdk-20
             echo "Downloading Oracle Java 20"
-            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-20-latest-aarch64_bin.tar.gz
+            sudo gdown https://drive.usercontent.google.com/download?id=17V6Y7khQZvt2dIvaqpI5cjVmtrQvpaQo
             echo "Extracting Oracle Java 20"
             sudo tar -xf jdk-20-latest-aarch64_bin.tar.gz
             sudo rm jdk-20-latest-aarch64_bin.tar.gz
@@ -562,7 +562,7 @@ else
             cd /usr/local
             sudo rm -rf jdk-19
             echo "Downloading Oracle Java 19"
-            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-19-latest-aarch64_bin.tar.gz
+            sudo gdown https://drive.usercontent.google.com/download?id=1_lEitg91FWm4emuD1uamA7arl69MALEX
             echo "Extracting Oracle Java 19"
             sudo tar -xf jdk-19-latest-aarch64_bin.tar.gz
             sudo rm jdk-19-latest-aarch64_bin.tar.gz
@@ -599,7 +599,7 @@ else
             cd /usr/local
             sudo rm -rf jdk-17
             echo "Downloading Oracle Java 17"
-            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-17-latest-aarch64_bin.tar.gz
+            sudo gdown https://drive.usercontent.google.com/download?id=1CzwHZMl7qyjIhB1E7m8xbKyxeOqQ8Fq1
             echo "Extracting Oracle Java 17"
             sudo tar -xf jdk-17-latest-aarch64_bin.tar.gz
             sudo rm jdk-17-latest-aarch64_bin.tar.gz
@@ -636,7 +636,7 @@ else
             cd /usr/local
             sudo rm -rf jdk-16
             echo "Downloading Oracle Java 16"
-            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-15-latest-aarch64_bin.tar.gz
+            sudo gdown https://drive.usercontent.google.com/download?id=1xGNogkxQ22c9BGtvrK8gkWGqyvGfSr3s
             echo "Extracting Oracle Java 16"
             sudo tar -xf jdk-16-latest-aarch64_bin.tar.gz
             sudo rm jdk-16-latest-aarch64_bin.tar.gz
@@ -673,7 +673,7 @@ else
             cd /usr/local
             sudo rm -rf jdk-15
             echo "Downloading Oracle Java 15"
-            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-15-latest-aarch64_bin.tar.gz
+            sudo gdown https://drive.usercontent.google.com/download?id=1FLtZKNmN0h_wSVlDRBYb6hC-vgQuZ2UE
             echo "Extracting Oracle Java 15"
             sudo tar -xf jdk-15-latest-aarch64_bin.tar.gz
             sudo rm jdk-15-latest-aarch64_bin.tar.gz
@@ -710,7 +710,7 @@ else
             cd /usr/local
             sudo rm -rf jdk-11
             echo "Downloading Oracle Java 11"
-            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-11-latest-aarch64_bin.tar.gz
+            sudo gdown https://drive.usercontent.google.com/download?id=1P0luM8WZEMLFbCPDWjYIp27qytXLC9Sc
             echo "Extracting Oracle Java 11"
             sudo tar -xf jdk-11-latest-aarch64_bin.tar.gz
             sudo rm jdk-11-latest-aarch64_bin.tar.gz
@@ -747,7 +747,7 @@ else
             cd /usr/local
             sudo rm -rf jdk1.8.0
             echo "Downloading Oracle Java 8"
-            sudo wget -q --show-progress https://github.com/mishakorzik/easy-java/releases/download/Java/jdk-8-latest-aarch64_bin.tar.gz
+            sudo gdown https://drive.usercontent.google.com/download?id=1Ey0L6dnTsuEvDNYoexc8cRbtGWANrmbL
             echo "Extracting Oracle Java 8"
             sudo tar -xf jdk-8-latest-aarch64_bin.tar.gz
             sudo rm jdk-8-latest-aarch64_bin.tar.gz

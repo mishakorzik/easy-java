@@ -20,14 +20,6 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         echo -e "installing debootstrap"
         pkg install debootstrap -y
     fi
-    if command -v wget &> /dev/null
-    then
-        echo -e "wget is \033[01;32minstalled\033[0m"
-    else
-        echo -e "wget is \033[01;31mnot\033[0m installed"
-        echo -e "installing wget"
-        pkg install wget -y
-    fi
     if command -v tar &> /dev/null
     then
         echo -e "tar is \033[01;32minstalled\033[0m"
@@ -36,6 +28,14 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         echo -e "installing tar"
         pkg install tar -y
     fi
+    if command -v gdown &> /dev/null
+        then
+            echo -e "gdown is \033[01;32minstalled\033[0m"
+        else
+            echo -e "gdown is \033[01;31mnot\033[0m installed"
+            python3 -m pip install gdown
+    fi
+
     echo -e ""
     echo -e "\033[01;34m01\033[0m. Oracle Java 22"
     echo -e "\033[01;34m02\033[0m. Oracle Java 21"
@@ -68,7 +68,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-22
         echo "Downloading Oracle Java 22"
-        sudo gdown https://drive.usercontent.google.com/download?id=1jGXGcSepZkt5bKVWHyYAzJCzSXAijItu
+        gdown https://drive.usercontent.google.com/download?id=1jGXGcSepZkt5bKVWHyYAzJCzSXAijItu
         echo "Extracting Oracle Java 22"
         tar -xf jdk-22-latest-aarch64_bin.tar.gz
         rm jdk-22-latest-aarch64_bin.tar.gz
@@ -106,7 +106,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-21
         echo "Downloading Oracle Java 21"
-        sudo gdown https://drive.usercontent.google.com/download?id=1yyRpoeL5ITOJb4K_mIHS9gCDtiY2TVLz
+        gdown https://drive.usercontent.google.com/download?id=1yyRpoeL5ITOJb4K_mIHS9gCDtiY2TVLz
         echo "Extracting Oracle Java 21"
         tar -xf jdk-21-latest-aarch64_bin.tar.gz
         rm jdk-21-latest-aarch64_bin.tar.gz
@@ -144,7 +144,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-20
         echo "Downloading Oracle Java 20"
-        sudo gdown https://drive.usercontent.google.com/download?id=17V6Y7khQZvt2dIvaqpI5cjVmtrQvpaQo
+        gdown https://drive.usercontent.google.com/download?id=17V6Y7khQZvt2dIvaqpI5cjVmtrQvpaQo
         echo "Extracting Oracle Java 20"
         tar -xf jdk-20-latest-aarch64_bin.tar.gz
         rm jdk-20-latest-aarch64_bin.tar.gz
@@ -182,7 +182,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-19
         echo "Downloading Oracle Java 19"
-        sudo gdown https://drive.usercontent.google.com/download?id=1_lEitg91FWm4emuD1uamA7arl69MALEX
+        gdown https://drive.usercontent.google.com/download?id=1_lEitg91FWm4emuD1uamA7arl69MALEX
         echo "Extracting Oracle Java 19"
         tar -xf jdk-19-latest-aarch64_bin.tar.gz
         rm jdk-19-latest-aarch64_bin.tar.gz
@@ -220,7 +220,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-17
         echo "Downloading Oracle Java 17"
-        sudo gdown https://drive.usercontent.google.com/download?id=1CzwHZMl7qyjIhB1E7m8xbKyxeOqQ8Fq1
+        gdown https://drive.usercontent.google.com/download?id=1CzwHZMl7qyjIhB1E7m8xbKyxeOqQ8Fq1
         echo "Extracting Oracle Java 17"
         tar -xf jdk-17-latest-aarch64_bin.tar.gz
         rm jdk-17-latest-aarch64_bin.tar.gz
@@ -258,7 +258,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-16
         echo "Downloading Oracle Java 16"
-        sudo gdown https://drive.usercontent.google.com/download?id=1xGNogkxQ22c9BGtvrK8gkWGqyvGfSr3s
+        gdown https://drive.usercontent.google.com/download?id=1xGNogkxQ22c9BGtvrK8gkWGqyvGfSr3s
         echo "Extracting Oracle Java 16"
         tar -xf jdk-16-latest-aarch64_bin.tar.gz
         rm jdk-16-latest-aarch64_bin.tar.gz
@@ -296,7 +296,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-15
         echo "Downloading Oracle Java 15"
-        sudo gdown https://drive.usercontent.google.com/download?id=1FLtZKNmN0h_wSVlDRBYb6hC-vgQuZ2UE
+        gdown https://drive.usercontent.google.com/download?id=1FLtZKNmN0h_wSVlDRBYb6hC-vgQuZ2UE
         echo "Extracting Oracle Java 15"
         tar -xf jdk-15-latest-aarch64_bin.tar.gz
         rm jdk-15-latest-aarch64_bin.tar.gz
@@ -334,7 +334,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk-11
         echo "Downloading Oracle Java 11"
-        sudo gdown https://drive.usercontent.google.com/download?id=1P0luM8WZEMLFbCPDWjYIp27qytXLC9Sc
+        gdown https://drive.usercontent.google.com/download?id=1P0luM8WZEMLFbCPDWjYIp27qytXLC9Sc
         echo "Extracting Oracle Java 11"
         tar -xf jdk-11-latest-aarch64_bin.tar.gz
         rm jdk-11-latest-aarch64_bin.tar.gz
@@ -372,7 +372,7 @@ if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
         cd /data/data/com.termux/files/java/usr/local
         rm -rf jdk1.8.0
         echo "Downloading Oracle Java 8"
-        sudo gdown https://drive.usercontent.google.com/download?id=1Ey0L6dnTsuEvDNYoexc8cRbtGWANrmbL&export=download&authuser=0
+        gdown https://drive.usercontent.google.com/download?id=1Ey0L6dnTsuEvDNYoexc8cRbtGWANrmbL&export=download&authuser=0
         echo "Extracting Oracle Java 8"
         tar -xf jdk-8-latest-aarch64_bin.tar.gz
         rm jdk-8-latest-aarch64_bin.tar.gz
@@ -419,19 +419,19 @@ else
     fi
 
     if grep -q "ID=debian" /etc/os-release || grep -q "ID=ubuntu" /etc/os-release; then
-        if command -v wget &> /dev/null
-        then
-            echo -e "wget is \033[01;32minstalled\033[0m"
-        else
-            echo -e "wget is \033[01;31mnot\033[0m installed"
-            sudo apt install wget -y
-        fi
         if command -v tar &> /dev/null
         then
             echo -e "tar is \033[01;32minstalled\033[0m"
         else
             echo -e "tar is \033[01;31mnot\033[0m installed"
             sudo apt install tar -y
+        fi
+        if command -v gdown &> /dev/null
+        then
+            echo -e "gdown is \033[01;32minstalled\033[0m"
+        else
+            echo -e "gdown is \033[01;31mnot\033[0m installed"
+            sudo python3 -m pip install gdown
         fi
 
         echo -e ""

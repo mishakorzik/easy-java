@@ -44,7 +44,7 @@ fi
 if [ "$IS_TERMUX" = true ]; then
     command -v proot &>/dev/null && echo -e "proot is \033[01;32minstalled\033[0m" || { echo -e "proot is \033[01;31mnot\033[0m installed"; pkg install proot -y; }
     command -v debootstrap &>/dev/null && echo -e "debootstrap is \033[01;32minstalled\033[0m" || { echo -e "debootstrap is \033[01;31mnot\033[0m installed"; pkg install debootstrap -y; }
-    command -v gdown &>/dev/null && echo -e "gdown is \033[01;32minstalled\033[0m" || { echo -e "gdown is \033[01;31mnot\033[0m installed"; python3 -m pip install gdown; }
+    command -v gdown &>/dev/null && echo -e "gdown is \033[01;32minstalled\033[0m" || { echo -e "gdown is \033[01;31mnot\033[0m installed"; python3 -m pip install gdown --break-system-packages; }
     command -v tar &>/dev/null && echo -e "tar is \033[01;32minstalled\033[0m" || { echo -e "tar is \033[01;31mnot\033[0m installed"; pkg install tar -y; }
     command -v wget &>/dev/null && echo -e "wget is \033[01;32minstalled\033[0m" || { echo -e "wget is \033[01;31mnot\033[0m installed"; pkg install wget -y; }
     command -v unzip &>/dev/null && echo -e "unzip is \033[01;32minstalled\033[0m" || { echo -e "unzip is \033[01;31mnot\033[0m installed"; pkg install unzip -y; }
@@ -52,7 +52,7 @@ else
     command -v tar &>/dev/null && echo -e "tar is \033[01;32minstalled\033[0m" || { echo -e "tar is \033[01;31mnot\033[0m installed"; sudo apt install tar -y; }
     command -v wget &>/dev/null && echo -e "wget is \033[01;32minstalled\033[0m" || { echo -e "wget is \033[01;31mnot\033[0m installed"; sudo apt install wget -y; }
     command -v unzip &>/dev/null && echo -e "unzip is \033[01;32minstalled\033[0m" || { echo -e "unzip is \033[01;31mnot\033[0m installed"; sudo apt install unzip -y; }
-    command -v gdown &>/dev/null && echo -e "gdown is \033[01;32minstalled\033[0m" || { echo -e "gdown is \033[01;31mnot\033[0m installed"; sudo python3 -m pip install gdown; }
+    command -v gdown &>/dev/null && echo -e "gdown is \033[01;32minstalled\033[0m" || { echo -e "gdown is \033[01;31mnot\033[0m installed"; sudo python3 -m pip install gdown --break-system-packages; }
 fi
 check_update
 

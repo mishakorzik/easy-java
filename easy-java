@@ -1,0 +1,648 @@
+#!/usr/bin/bash
+
+VERSION="2.0.3"
+check_update() {
+    local REMOTE
+    REMOTE=$(wget -qO- "https://raw.githubusercontent.com/mishakorzik/easy-java/refs/heads/main/version.txt" 2>/dev/null | tr -d '[:space:]')
+    if [ -z "$REMOTE" ]; then
+        echo -e "\033[01;33mCould not check for updates (no internet or URL unavailable).\033[0m"
+        return
+    fi
+    if [ "$REMOTE" != "$VERSION" ]; then
+        echo -e "\033[01;31mA new version is available: ${REMOTE} (you have ${VERSION})\033[0m"
+        echo -e "\033[01;33mPlease update from: https://github.com/mishakorzik/easy-java\033[0m"
+        exit 0
+    fi
+}
+if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
+    IS_TERMUX=true
+    BASE_DIR="/data/data/com.termux/files/java/usr/local"
+    CONTAINER_ROOT="/data/data/com.termux/files/java"
+else
+    IS_TERMUX=false
+    BASE_DIR="/usr/local"
+    CONTAINER_ROOT=""
+fi
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ]; then
+    SYSTEM_ARCH="arm64"
+    DEBIAN_ARCH="arm64"
+elif [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
+    SYSTEM_ARCH="x86_64"
+    DEBIAN_ARCH="amd64"
+else
+    echo "Unsupported architecture: $ARCH"
+    echo "Supported architectures: aarch64, x86_64, amd64"
+    exit 1
+fi
+if [ "$IS_TERMUX" = false ]; then
+    if ! grep -q "ID=debian" /etc/os-release && ! grep -q "ID=ubuntu" /etc/os-release; then
+        echo "This system is not supported. Supported systems: debian, ubuntu, termux."
+        exit 1
+    fi
+fi
+if [ "$IS_TERMUX" = true ]; then
+    command -v proot &>/dev/null && echo -e "proot is \033[01;32minstalled\033[0m" || { echo -e "proot is \033[01;31mnot\033[0m installed"; pkg install proot -y; }
+    command -v debootstrap &>/dev/null && echo -e "debootstrap is \033[01;32minstalled\033[0m" || { echo -e "debootstrap is \033[01;31mnot\033[0m installed"; pkg install debootstrap -y; }
+    command -v gdown &>/dev/null && echo -e "gdown is \033[01;32minstalled\033[0m" || { echo -e "gdown is \033[01;31mnot\033[0m installed"; python3 -m pip install gdown; }
+    command -v tar &>/dev/null && echo -e "tar is \033[01;32minstalled\033[0m" || { echo -e "tar is \033[01;31mnot\033[0m installed"; pkg install tar -y; }
+    command -v wget &>/dev/null && echo -e "wget is \033[01;32minstalled\033[0m" || { echo -e "wget is \033[01;31mnot\033[0m installed"; pkg install wget -y; }
+    command -v unzip &>/dev/null && echo -e "unzip is \033[01;32minstalled\033[0m" || { echo -e "unzip is \033[01;31mnot\033[0m installed"; pkg install unzip -y; }
+else
+    command -v tar &>/dev/null && echo -e "tar is \033[01;32minstalled\033[0m" || { echo -e "tar is \033[01;31mnot\033[0m installed"; sudo apt install tar -y; }
+    command -v wget &>/dev/null && echo -e "wget is \033[01;32minstalled\033[0m" || { echo -e "wget is \033[01;31mnot\033[0m installed"; sudo apt install wget -y; }
+    command -v unzip &>/dev/null && echo -e "unzip is \033[01;32minstalled\033[0m" || { echo -e "unzip is \033[01;31mnot\033[0m installed"; sudo apt install unzip -y; }
+    command -v gdown &>/dev/null && echo -e "gdown is \033[01;32minstalled\033[0m" || { echo -e "gdown is \033[01;31mnot\033[0m installed"; sudo python3 -m pip install gdown; }
+fi
+check_update
+
+JAVA_VERSIONS=(25 24 22 21 20 19 17 16 15 11 8)
+if [ "$SYSTEM_ARCH" = "arm64" ]; then
+    declare -A JAVA_GDRIVE=(
+        [25]="15rElMrjXoGNEIW4onfzWbnLaKr9Zhace"
+        [24]="1tiQgFxp159Sbzaz3mR75Ubu6jmfWdFHy"
+        [22]="1FUy39jp_SBEqQCM_VCxzA-C0VvQo6qBA"
+        [21]="1gEl5qFgMMzKAjHvIDFtIktCVZqi2qbpe"
+        [20]="17V6Y7khQZvt2dIvaqpI5cjVmtrQvpaQo"
+        [19]="1_lEitg91FWm4emuD1uamA7arl69MALEX"
+        [17]="1laFekV6xUHMX1LOqs_9RuMZkwHmV98sE"
+        [16]="1pjn8TrYY4CHkWV3OX840NgxQnymRJFMM"
+        [15]="1FLtZKNmN0h_wSVlDRBYb6hC-vgQuZ2UE"
+        [11]="1aSHmhK4BP5VHF2a2f9pcoObw9NBf3Qk9"
+        [8]="1u3IfZt29jc3HgBtE6G67qUOMiIET6tZJ")
+else
+    declare -A JAVA_GDRIVE=(
+        [25]="1FNDxl-4-yChz_rTFgiRBe36IRq0FnjE2"
+        [24]="1O0TtrWuLsD1-ypJrvcZadKRCJ0Prn-Bg"
+        [22]="17uyLY0wkfewYOHmeoil2zn5fPU9p5xJ5"
+        [21]="1lWSI7c5UdSvgCQvFCK7JzG70y5V5kMR5"
+        [17]="19Ga5SqxyqA93rM_Iuv1AUtwaJgIixfaR"
+        [16]="1KaeQNZBzkVrvmFi3M89F0mHvep-1qzt_"
+        [15]="1qjIH9d_ILf-Lb6xp4jYMc5-ttkq290e7"
+        [11]="1V0RrozZuSspvBIkc_jMRn90OWuxD_WDO"
+        [8]="1KW8YYFGVjwFipq4zL0IQEAAS8cUTfl0S")
+fi
+
+MAVEN_VERSIONS=("3.9.14" "3.8.9")
+declare -A MAVEN_URLS=(
+    ["3.9.14"]="https://dlcdn.apache.org/maven/maven-3/3.9.14/binaries/apache-maven-3.9.14-bin.tar.gz"
+    ["3.8.9"]="https://dlcdn.apache.org/maven/maven-3/3.8.9/binaries/apache-maven-3.8.9-bin.tar.gz")
+
+GRADLE_VERSIONS=("9.4.1" "9.4.0" "9.3.1" "8.14.4" "8.14.3" "7.6.6")
+declare -A GRADLE_URLS=(
+    ["9.4.1"]="https://services.gradle.org/distributions/gradle-9.4.1-bin.zip"
+    ["9.4.0"]="https://services.gradle.org/distributions/gradle-9.4.0-bin.zip"
+    ["9.3.1"]="https://services.gradle.org/distributions/gradle-9.3.1-bin.zip"
+    ["8.14.4"]="https://services.gradle.org/distributions/gradle-8.14.4-bin.zip"
+    ["8.14.3"]="https://services.gradle.org/distributions/gradle-8.14.3-bin.zip"
+    ["7.6.6"]="https://services.gradle.org/distributions/gradle-7.6.6-bin.zip")
+
+get_jdk_dir() { [ "$1" = "8" ] && echo "jdk1.8.0" || echo "jdk-$1"; }
+get_rc_file() {
+    if [ -d "$HOME/.oh-my-zsh" ]; then
+        echo "$HOME/.zshrc"
+    elif [ "$IS_TERMUX" = true ]; then
+        echo "$PREFIX/etc/bash.bashrc"
+    else
+        echo "$HOME/.bashrc"
+    fi
+}
+is_java_installed() { [ -d "$BASE_DIR/$(get_jdk_dir "$1")" ]; }
+get_installed_javas() {
+    local arr=()
+    for v in "${JAVA_VERSIONS[@]}"; do
+        is_java_installed "$v" && arr+=("$v")
+    done
+    echo "${arr[@]}"
+}
+is_maven_installed() { [ -d "$BASE_DIR/mvn" ]; }
+get_maven_version() { [ -f "$BASE_DIR/mvn/.version" ] && cat "$BASE_DIR/mvn/.version" || echo ""; }
+is_gradle_installed() { [ -d "$BASE_DIR/gradle" ]; }
+get_gradle_version() { [ -f "$BASE_DIR/gradle/.version" ] && cat "$BASE_DIR/gradle/.version" || echo ""; }
+ensure_container() {
+    [ "$IS_TERMUX" = false ] && return
+    if [ -d "$CONTAINER_ROOT" ]; then
+        echo "Skipping Debian container install (already exists)"
+        return
+    fi
+    echo "Installing Debian container (this will take a while)..."
+    debootstrap --variant=minbase --arch="$DEBIAN_ARCH" --components=main stable "$CONTAINER_ROOT" http://ftp.debian.org/debian/ > /dev/null 2>&1
+    echo "Verifying Debian container..."
+    unset LD_PRELOAD
+    if proot -0 --link2symlink -r "$CONTAINER_ROOT" -w /root \
+        -b /dev/ -b /sys/ -b /proc/ \
+        -b /data/data/com.termux/files/home \
+        /usr/bin/env -i HOME=/root TERM="xterm-256color" \
+        PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+        grep -q "ID=debian" /etc/os-release; then
+        echo -e "Debian container \033[01;32minstalled\033[0m"
+    else
+        rm -rf "$CONTAINER_ROOT"
+        echo -e "\033[01;31mFailed to install Debian container\033[0m"
+        exit 1
+    fi
+}
+remove_java_from_rc() {
+    local VER="$1"
+    local RC
+    RC=$(get_rc_file)
+    sed -i "/^java-${VER}() {/,/^}/d" "$RC" 2>/dev/null
+    sed -i "/^javac-${VER}() {/,/^}/d" "$RC" 2>/dev/null
+    sed -i "/^mvn-${VER}() {/,/^}/d" "$RC" 2>/dev/null
+    sed -i "/^gradle-${VER}() {/,/^}/d" "$RC" 2>/dev/null
+    [ "$IS_TERMUX" = true ] && sed -i "/alias java-${VER}=/d" "$CONTAINER_ROOT/root/.bashrc" 2>/dev/null
+}
+remove_java_alias_from_rc() {
+    local VER="$1"
+    local RC
+    RC=$(get_rc_file)
+    sed -i "/^java-${VER}() {/,/^}/d" "$RC" 2>/dev/null
+    sed -i "/^javac-${VER}() {/,/^}/d" "$RC" 2>/dev/null
+    [ "$IS_TERMUX" = true ] && sed -i "/alias java-${VER}=/d" "$CONTAINER_ROOT/root/.bashrc" 2>/dev/null
+}
+remove_mvn_java_from_rc() {
+    local JAVA_VER="$1"
+    local RC
+    RC=$(get_rc_file)
+    sed -i "/^mvn-${JAVA_VER}() {/,/^}/d" "$RC" 2>/dev/null
+}
+remove_all_mvn_from_rc() {
+    local RC
+    RC=$(get_rc_file)
+    for v in "${JAVA_VERSIONS[@]}"; do
+        sed -i "/^mvn-${v}() {/,/^}/d" "$RC" 2>/dev/null
+    done
+}
+remove_gradle_java_from_rc() {
+    local JAVA_VER="$1"
+    local RC
+    RC=$(get_rc_file)
+    sed -i "/^gradle-${JAVA_VER}() {/,/^}/d" "$RC" 2>/dev/null
+}
+remove_all_gradle_from_rc() {
+    local RC
+    RC=$(get_rc_file)
+    for v in "${JAVA_VERSIONS[@]}"; do
+        sed -i "/^gradle-${v}() {/,/^}/d" "$RC" 2>/dev/null
+    done
+}
+register_java_functions() {
+    local VER="$1"
+    local JDK
+    JDK=$(get_jdk_dir "$VER")
+    local RC
+    RC=$(get_rc_file)
+    grep -q "^java-${VER}() {" "$RC" 2>/dev/null && return
+    if [ "$IS_TERMUX" = true ]; then
+        echo "java-${VER}() {" >> "$RC"
+        echo '  echo -e "\033[01;34mjava args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-'"${VER}"'; java $*"' >> "$RC"
+        echo "}" >> "$RC"
+        echo "javac-${VER}() {" >> "$RC"
+        echo '  echo -e "\033[01;34mjavac args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "java-'"${VER}"'; javac $*"' >> "$RC"
+        echo "}" >> "$RC"
+    else
+        echo "java-${VER}() {" >> "$RC"
+        echo "  export JAVA_HOME=\"$BASE_DIR/${JDK}\"" >> "$RC"
+        echo "  export PATH=\"\$JAVA_HOME/bin:\$PATH\"" >> "$RC"
+        echo '  echo -e "\033[01;34mjava args\033[0m: $*"' >> "$RC"
+        echo "  java \"\$@\"" >> "$RC"
+        echo "}" >> "$RC"
+        echo "javac-${VER}() {" >> "$RC"
+        echo "  export JAVA_HOME=\"$BASE_DIR/${JDK}\"" >> "$RC"
+        echo "  export PATH=\"\$JAVA_HOME/bin:\$PATH\"" >> "$RC"
+        echo '  echo -e "\033[01;34mjavac args\033[0m: $*"' >> "$RC"
+        echo "  javac \"\$@\"" >> "$RC"
+        echo "}" >> "$RC"
+    fi
+    if [ "$IS_TERMUX" = true ]; then
+        grep -q "alias java-${VER}=" "$CONTAINER_ROOT/root/.bashrc" 2>/dev/null && return
+        echo "alias java-${VER}=\"export JAVA_HOME=/usr/local/${JDK} && export PATH=\\\$JAVA_HOME/bin:\\\$PATH\"" >> "$CONTAINER_ROOT/root/.bashrc"
+    fi
+}
+do_install_java() {
+    local VER="$1"
+    local GDRIVE_ID="${JAVA_GDRIVE[$VER]}"
+    if [ -z "$GDRIVE_ID" ]; then
+        echo -e "\033[01;31mJava ${VER} is not available for ${SYSTEM_ARCH} architecture\033[0m"
+        return 1
+    fi
+    local JDK
+    JDK=$(get_jdk_dir "$VER")
+    ensure_container
+    echo "Downloading Java ${VER}..."
+    local TMPFILE="/tmp/java-${VER}.tar.gz"
+    gdown "https://drive.google.com/uc?id=$GDRIVE_ID" -O "$TMPFILE" --quiet
+    if [ ! -f "$TMPFILE" ]; then
+        echo -e "\033[01;31mDownload failed\033[0m"
+        return 1
+    fi
+    echo "Installing Java ${VER}..."
+    if [ "$IS_TERMUX" = false ]; then
+        sudo mkdir -p "$BASE_DIR"
+        sudo tar -xzf "$TMPFILE" -C "$BASE_DIR"
+    else
+        mkdir -p "$BASE_DIR"
+        tar -xzf "$TMPFILE" -C "$BASE_DIR"
+    fi
+    rm -f "$TMPFILE"
+    if [ ! -d "$BASE_DIR/$JDK" ]; then
+        echo -e "\033[01;31mInstallation failed\033[0m"
+        return 1
+    fi
+    echo -e "Java ${VER} \033[01;32minstalled\033[0m to $BASE_DIR/$JDK"
+}
+do_remove_java() {
+    local VER="$1"
+    local JDK
+    JDK=$(get_jdk_dir "$VER")
+    echo "Removing Java ${VER}..."
+    if [ "$IS_TERMUX" = false ]; then
+        sudo rm -rf "$BASE_DIR/$JDK"
+    else
+        rm -rf "$BASE_DIR/$JDK"
+    fi
+    remove_java_from_rc "$VER"
+    echo -e "Java ${VER} \033[01;31mremoved\033[0m"
+}
+do_install_maven() {
+    local VER="$1"
+    local URL="${MAVEN_URLS[$VER]}"
+    echo "Downloading Maven ${VER}..."
+    local TMPFILE="/tmp/maven.tar.gz"
+    wget -q "$URL" -O "$TMPFILE"
+    if [ ! -f "$TMPFILE" ]; then
+        echo -e "\033[01;31mDownload failed\033[0m"
+        return 1
+    fi
+    echo "Installing Maven ${VER}..."
+    if [ "$IS_TERMUX" = false ]; then
+        sudo rm -rf "$BASE_DIR/mvn"
+        sudo mkdir -p "$BASE_DIR/mvn"
+        sudo tar -xzf "$TMPFILE" --strip-components=1 -C "$BASE_DIR/mvn"
+        echo "$VER" | sudo tee "$BASE_DIR/mvn/.version" > /dev/null
+    else
+        rm -rf "$BASE_DIR/mvn"
+        mkdir -p "$BASE_DIR/mvn"
+        tar -xzf "$TMPFILE" --strip-components=1 -C "$BASE_DIR/mvn"
+        echo "$VER" > "$BASE_DIR/mvn/.version"
+    fi
+    rm -f "$TMPFILE"
+    echo -e "Maven ${VER} \033[01;32minstalled\033[0m to $BASE_DIR/mvn"
+}
+do_remove_maven() {
+    echo "Removing Maven..."
+    if [ "$IS_TERMUX" = false ]; then
+        sudo rm -rf "$BASE_DIR/mvn"
+    else
+        rm -rf "$BASE_DIR/mvn"
+    fi
+    remove_all_mvn_from_rc
+    echo -e "Maven \033[01;31mremoved\033[0m"
+}
+prompt_mvn_java_link() {
+    local INSTALLED_JAVAS
+    read -ra INSTALLED_JAVAS <<< "$(get_installed_javas)"
+    if [ ${#INSTALLED_JAVAS[@]} -eq 0 ]; then
+        echo -e "\033[01;31mNo Java versions installed. Cannot create Maven alias.\033[0m"
+        return
+    fi
+    echo -e "Create Maven alias for which Java version?"
+    for i in "${!INSTALLED_JAVAS[@]}"; do
+        echo -e "  \033[01;34m$(printf "%02d" $((i+1)))\033[0m. Java ${INSTALLED_JAVAS[$i]}"
+    done
+    echo -e "  \033[01;34m$(printf "%02d" $((${#INSTALLED_JAVAS[@]}+1)))\033[0m. All installed versions"
+    echo -e "  \033[01;34m$(printf "%02d" $((${#INSTALLED_JAVAS[@]}+2)))\033[0m. Cancel"
+    read -p "Choose: " ch
+    if [[ "$ch" =~ ^[0-9]+$ ]] && [ "$ch" -ge 1 ] && [ "$ch" -le "${#INSTALLED_JAVAS[@]}" ]; then
+        local JAVA_VER="${INSTALLED_JAVAS[$((ch-1))]}"
+        register_mvn_function "$JAVA_VER"
+        echo -e "Maven alias \033[01;32mcreated\033[0m for Java ${JAVA_VER}: mvn-${JAVA_VER}"
+    elif [[ "$ch" =~ ^[0-9]+$ ]] && [ "$ch" -eq "$((${#INSTALLED_JAVAS[@]}+1))" ]; then
+        for JAVA_VER in "${INSTALLED_JAVAS[@]}"; do
+            register_mvn_function "$JAVA_VER"
+        done
+        echo -e "Maven aliases \033[01;32mcreated\033[0m for all installed Java versions"
+    fi
+}
+register_mvn_function() {
+    local JAVA_VER="$1"
+    local JDK
+    JDK=$(get_jdk_dir "$JAVA_VER")
+    local RC
+    RC=$(get_rc_file)
+    remove_mvn_java_from_rc "$JAVA_VER"
+    if [ "$IS_TERMUX" = true ]; then
+        echo "mvn-${JAVA_VER}() {" >> "$RC"
+        echo '  echo -e "\033[01;34mmvn args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "export JAVA_HOME=/usr/local/'"${JDK}"' && export PATH=\$JAVA_HOME/bin:/usr/local/mvn/bin:\$PATH && mvn $*"' >> "$RC"
+        echo "}" >> "$RC"
+    else
+        echo "mvn-${JAVA_VER}() {" >> "$RC"
+        echo "  export JAVA_HOME=\"$BASE_DIR/${JDK}\"" >> "$RC"
+        echo "  export PATH=\"\$JAVA_HOME/bin:$BASE_DIR/mvn/bin:\$PATH\"" >> "$RC"
+        echo "  mvn \"\$@\"" >> "$RC"
+        echo "}" >> "$RC"
+    fi
+}
+do_install_gradle() {
+    local VER="$1"
+    local URL="${GRADLE_URLS[$VER]}"
+    echo "Downloading Gradle ${VER}..."
+    local TMPFILE="/tmp/gradle.zip"
+    wget -q "$URL" -O "$TMPFILE"
+    if [ ! -f "$TMPFILE" ]; then
+        echo -e "\033[01;31mDownload failed\033[0m"
+        return 1
+    fi
+    echo "Installing Gradle ${VER}..."
+    if [ "$IS_TERMUX" = false ]; then
+        sudo rm -rf "$BASE_DIR/gradle"
+        sudo mkdir -p "$BASE_DIR/gradle"
+        sudo unzip -q "$TMPFILE" -d /tmp
+        sudo mv /tmp/gradle-${VER}/* "$BASE_DIR/gradle/"
+        sudo rm -rf /tmp/gradle-${VER}
+        echo "$VER" | sudo tee "$BASE_DIR/gradle/.version" > /dev/null
+    else
+        rm -rf "$BASE_DIR/gradle"
+        mkdir -p "$BASE_DIR/gradle"
+        unzip -q "$TMPFILE" -d /tmp
+        mv /tmp/gradle-${VER}/* "$BASE_DIR/gradle/"
+        rm -rf /tmp/gradle-${VER}
+        echo "$VER" > "$BASE_DIR/gradle/.version"
+    fi
+    rm -f "$TMPFILE"
+    echo -e "Gradle ${VER} \033[01;32minstalled\033[0m to $BASE_DIR/gradle"
+}
+do_remove_gradle() {
+    echo "Removing Gradle..."
+    if [ "$IS_TERMUX" = false ]; then
+        sudo rm -rf "$BASE_DIR/gradle"
+    else
+        rm -rf "$BASE_DIR/gradle"
+    fi
+    remove_all_gradle_from_rc
+    echo -e "Gradle \033[01;31mremoved\033[0m"
+}
+prompt_gradle_java_link() {
+    local INSTALLED_JAVAS
+    read -ra INSTALLED_JAVAS <<< "$(get_installed_javas)"
+    if [ ${#INSTALLED_JAVAS[@]} -eq 0 ]; then
+        echo -e "\033[01;31mNo Java versions installed. Cannot create Gradle alias.\033[0m"
+        return
+    fi
+    echo -e "Create Gradle alias for which Java version?"
+    for i in "${!INSTALLED_JAVAS[@]}"; do
+        echo -e "  \033[01;34m$(printf "%02d" $((i+1)))\033[0m. Java ${INSTALLED_JAVAS[$i]}"
+    done
+    echo -e "  \033[01;34m$(printf "%02d" $((${#INSTALLED_JAVAS[@]}+1)))\033[0m. All installed versions"
+    echo -e "  \033[01;34m$(printf "%02d" $((${#INSTALLED_JAVAS[@]}+2)))\033[0m. Cancel"
+    read -p "Choose: " ch
+    if [[ "$ch" =~ ^[0-9]+$ ]] && [ "$ch" -ge 1 ] && [ "$ch" -le "${#INSTALLED_JAVAS[@]}" ]; then
+        local JAVA_VER="${INSTALLED_JAVAS[$((ch-1))]}"
+        register_gradle_function "$JAVA_VER"
+        echo -e "Gradle alias \033[01;32mcreated\033[0m for Java ${JAVA_VER}: gradle-${JAVA_VER}"
+    elif [[ "$ch" =~ ^[0-9]+$ ]] && [ "$ch" -eq "$((${#INSTALLED_JAVAS[@]}+1))" ]; then
+        for JAVA_VER in "${INSTALLED_JAVAS[@]}"; do
+            register_gradle_function "$JAVA_VER"
+        done
+        echo -e "Gradle aliases \033[01;32mcreated\033[0m for all installed Java versions"
+    fi
+}
+register_gradle_function() {
+    local JAVA_VER="$1"
+    local JDK
+    JDK=$(get_jdk_dir "$JAVA_VER")
+    local RC
+    RC=$(get_rc_file)
+    remove_gradle_java_from_rc "$JAVA_VER"
+    if [ "$IS_TERMUX" = true ]; then
+        echo "gradle-${JAVA_VER}() {" >> "$RC"
+        echo '  echo -e "\033[01;34mgradle args\033[0m: $*"; unset LD_PRELOAD; proot -0 --link2symlink -r $PREFIX/../java -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b /data/data/com.termux/files/home /usr/bin/env -i HOME=/root TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic "export JAVA_HOME=/usr/local/'"${JDK}"' && export PATH=\$JAVA_HOME/bin:/usr/local/gradle/bin:\$PATH && gradle $*"' >> "$RC"
+        echo "}" >> "$RC"
+    else
+        echo "gradle-${JAVA_VER}() {" >> "$RC"
+        echo "  export JAVA_HOME=\"$BASE_DIR/${JDK}\"" >> "$RC"
+        echo "  export PATH=\"\$JAVA_HOME/bin:$BASE_DIR/gradle/bin:\$PATH\"" >> "$RC"
+        echo "  gradle \"\$@\"" >> "$RC"
+        echo "}" >> "$RC"
+    fi
+}
+java_menu() {
+    while true; do
+        echo -e ""
+        echo -e "\033[01;33mJava (${SYSTEM_ARCH}):\033[0m"
+        for i in "${!JAVA_VERSIONS[@]}"; do
+            local VER="${JAVA_VERSIONS[$i]}"
+            local STATUS=""
+            if [ -n "${JAVA_GDRIVE[$VER]}" ]; then
+                is_java_installed "$VER" && STATUS=" \033[01;32m[installed]\033[0m"
+                printf "  \033[01;34m%02d\033[0m. Java %-5s%b\n" "$((i+1))" "$VER" "$STATUS"
+            else
+                printf "  \033[01;34m%02d\033[0m. Java %-5s \033[01;31m[unavailable]\033[0m\n" "$((i+1))" "$VER"
+            fi
+        done
+        local MAX="${#JAVA_VERSIONS[@]}"
+        printf "  \033[01;34m%02d\033[0m. Back\n" "$((MAX+1))"
+        read -p "Choose: " choice
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$MAX" ]; then
+            local VER="${JAVA_VERSIONS[$((choice-1))]}"
+            if [ -z "${JAVA_GDRIVE[$VER]}" ]; then
+                echo -e "\033[01;31mJava ${VER} is not available for ${SYSTEM_ARCH} architecture\033[0m"
+                continue
+            fi
+            echo -e ""
+            if is_java_installed "$VER"; then
+                echo -e "  \033[01;34m01\033[0m. Reinstall Java ${VER}"
+                echo -e "  \033[01;34m02\033[0m. Delete Java ${VER}"
+                echo -e "  \033[01;34m03\033[0m. Re-add alias"
+                echo -e "  \033[01;34m04\033[0m. Back"
+                read -p "Choose: " sub
+                case "$sub" in
+                    1) do_install_java "$VER"; register_java_functions "$VER" ;;
+                    2) do_remove_java "$VER" ;;
+                    3) remove_java_alias_from_rc "$VER"; register_java_functions "$VER"; echo -e "Alias \033[01;32mre-added\033[0m" ;;
+                esac
+            else
+                echo -e "  \033[01;34m01\033[0m. Download Java ${VER}"
+                echo -e "  \033[01;34m02\033[0m. Back"
+                read -p "Choose: " sub
+                if [ "$sub" = "1" ]; then
+                    do_install_java "$VER"
+                    register_java_functions "$VER"
+                    echo -e "Java ${VER} \033[01;32minstalled\033[0m"
+                    echo -e "To run: java-${VER}"
+                fi
+            fi
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -eq "$((MAX+1))" ]; then
+            break
+        else
+            echo "Invalid option"
+        fi
+    done
+}
+maven_menu() {
+    local INSTALLED_CHECK
+    read -ra INSTALLED_CHECK <<< "$(get_installed_javas)"
+    if [ ${#INSTALLED_CHECK[@]} -eq 0 ] && ! is_maven_installed; then
+        echo -e "\033[01;31mCannot install Maven: no Java version is installed. Install Java first.\033[0m"
+        return
+    fi
+    while true; do
+        echo -e ""
+        echo -e "\033[01;33mMaven:\033[0m"
+        local MVN_VER_INSTALLED
+        MVN_VER_INSTALLED=$(get_maven_version)
+        for i in "${!MAVEN_VERSIONS[@]}"; do
+            local MVER="${MAVEN_VERSIONS[$i]}"
+            local STATUS=""
+            [ "$MVER" = "$MVN_VER_INSTALLED" ] && STATUS=" \033[01;32m[installed]\033[0m"
+            printf "  \033[01;34m%02d\033[0m. Maven %-10s%b\n" "$((i+1))" "$MVER" "$STATUS"
+        done
+        local NEXT=$((${#MAVEN_VERSIONS[@]}+1))
+        printf "  \033[01;34m%02d\033[0m. Manage aliases\n" "$NEXT"
+        printf "  \033[01;34m%02d\033[0m. Back\n" "$((NEXT+1))"
+        read -p "Choose: " choice
+        local MAX="${#MAVEN_VERSIONS[@]}"
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$MAX" ]; then
+            local MVER="${MAVEN_VERSIONS[$((choice-1))]}"
+            echo -e ""
+            if [ "$MVER" = "$MVN_VER_INSTALLED" ]; then
+                echo -e "  \033[01;34m01\033[0m. Reinstall Maven ${MVER}"
+                echo -e "  \033[01;34m02\033[0m. Delete Maven ${MVER}"
+                echo -e "  \033[01;34m03\033[0m. Re-add alias"
+                echo -e "  \033[01;34m04\033[0m. Back"
+                read -p "Choose: " sub
+                case "$sub" in
+                    1) do_install_maven "$MVER"; prompt_mvn_java_link ;;
+                    2) do_remove_maven ;;
+                    3) prompt_mvn_java_link ;;
+                esac
+            else
+                local INST_ARR
+                read -ra INST_ARR <<< "$(get_installed_javas)"
+                if [ ${#INST_ARR[@]} -eq 0 ]; then
+                    echo -e "\033[01;31mCannot install Maven: no Java version is installed. Install Java first.\033[0m"
+                else
+                    echo -e "  \033[01;34m01\033[0m. Download Maven ${MVER}"
+                    echo -e "  \033[01;34m02\033[0m. Back"
+                    read -p "Choose: " sub
+                    [ "$sub" = "1" ] && { do_install_maven "$MVER"; prompt_mvn_java_link; }
+                fi
+            fi
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -eq "$NEXT" ]; then
+            if ! is_maven_installed; then
+                echo "Maven is not installed. Install Maven first."
+            else
+                prompt_mvn_java_link
+            fi
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -eq "$((NEXT+1))" ]; then
+            break
+        else
+            echo "Invalid option"
+        fi
+    done
+}
+gradle_menu() {
+    local INSTALLED_CHECK
+    read -ra INSTALLED_CHECK <<< "$(get_installed_javas)"
+    if [ ${#INSTALLED_CHECK[@]} -eq 0 ] && ! is_gradle_installed; then
+        echo -e "\033[01;31mCannot install Gradle: no Java version is installed. Install Java first.\033[0m"
+        return
+    fi
+    while true; do
+        echo -e ""
+        echo -e "\033[01;33mGradle:\033[0m"
+        local GRADLE_VER_INSTALLED
+        GRADLE_VER_INSTALLED=$(get_gradle_version)
+        for i in "${!GRADLE_VERSIONS[@]}"; do
+            local GVER="${GRADLE_VERSIONS[$i]}"
+            local STATUS=""
+            [ "$GVER" = "$GRADLE_VER_INSTALLED" ] && STATUS=" \033[01;32m[installed]\033[0m"
+            printf "  \033[01;34m%02d\033[0m. Gradle %-10s%b\n" "$((i+1))" "$GVER" "$STATUS"
+        done
+        local NEXT=$((${#GRADLE_VERSIONS[@]}+1))
+        printf "  \033[01;34m%02d\033[0m. Manage aliases\n" "$NEXT"
+        printf "  \033[01;34m%02d\033[0m. Back\n" "$((NEXT+1))"
+        read -p "Choose: " choice
+        local MAX="${#GRADLE_VERSIONS[@]}"
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$MAX" ]; then
+            local GVER="${GRADLE_VERSIONS[$((choice-1))]}"
+            echo -e ""
+            if [ "$GVER" = "$GRADLE_VER_INSTALLED" ]; then
+                echo -e "  \033[01;34m01\033[0m. Reinstall Gradle ${GVER}"
+                echo -e "  \033[01;34m02\033[0m. Delete Gradle ${GVER}"
+                echo -e "  \033[01;34m03\033[0m. Re-add alias"
+                echo -e "  \033[01;34m04\033[0m. Back"
+                read -p "Choose: " sub
+                case "$sub" in
+                    1) do_install_gradle "$GVER"; prompt_gradle_java_link ;;
+                    2) do_remove_gradle ;;
+                    3) prompt_gradle_java_link ;;
+                esac
+            else
+                local INST_ARR
+                read -ra INST_ARR <<< "$(get_installed_javas)"
+                if [ ${#INST_ARR[@]} -eq 0 ]; then
+                    echo -e "\033[01;31mCannot install Gradle: no Java version is installed. Install Java first.\033[0m"
+                else
+                    echo -e "  \033[01;34m01\033[0m. Download Gradle ${GVER}"
+                    echo -e "  \033[01;34m02\033[0m. Back"
+                    read -p "Choose: " sub
+                    [ "$sub" = "1" ] && { do_install_gradle "$GVER"; prompt_gradle_java_link; }
+                fi
+            fi
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -eq "$NEXT" ]; then
+            if ! is_gradle_installed; then
+                echo "Gradle is not installed. Install Gradle first."
+            else
+                prompt_gradle_java_link
+            fi
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -eq "$((NEXT+1))" ]; then
+            break
+        else
+            echo "Invalid option"
+        fi
+    done
+}
+manual_launch() {
+    ensure_container
+    echo -e "Launching \033[01;34mproot shell\033[0m..."
+    unset LD_PRELOAD
+    proot -0 --link2symlink -r "$CONTAINER_ROOT" -w /root \
+        -b /dev/ -b /sys/ -b /proc/ \
+        -b /data/data/com.termux/files/home \
+        /usr/bin/env -i HOME=/root TERM="xterm-256color" \
+        PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash
+}
+while true; do
+    echo -e ""
+    echo -e "\033[01;33mv${VERSION}\033[0m"
+    if [ "$IS_TERMUX" = true ]; then
+        echo -e "\033[01;34m01\033[0m. Java"
+        echo -e "\033[01;34m02\033[0m. Maven"
+        echo -e "\033[01;34m03\033[0m. Gradle"
+        echo -e "\033[01;34m04\033[0m. Manual"
+        echo -e "\033[01;34m05\033[0m. Quit"
+        read -p "Choose: " mode
+        case "$mode" in
+            1) java_menu ;;
+            2) maven_menu ;;
+            3) gradle_menu ;;
+            4) manual_launch; break ;;
+            5) exit 0 ;;
+            *) echo "Invalid option" ;;
+        esac
+    else
+        echo -e "\033[01;34m01\033[0m. Java"
+        echo -e "\033[01;34m02\033[0m. Maven"
+        echo -e "\033[01;34m03\033[0m. Gradle"
+        echo -e "\033[01;34m04\033[0m. Quit"
+        read -p "Choose: " mode
+        case "$mode" in
+            1) java_menu ;;
+            2) maven_menu ;;
+            3) gradle_menu ;;
+            4) exit 0 ;;
+            *) echo "Invalid option" ;;
+        esac
+    fi
+done

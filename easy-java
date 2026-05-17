@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-VERSION="2.0.3"
+VERSION="2.0.4"
 check_update() {
     local REMOTE
     REMOTE=$(wget -qO- "https://raw.githubusercontent.com/mishakorzik/easy-java/refs/heads/main/version.txt" 2>/dev/null | tr -d '[:space:]')
@@ -83,10 +83,11 @@ else
         [8]="1KW8YYFGVjwFipq4zL0IQEAAS8cUTfl0S")
 fi
 
-MAVEN_VERSIONS=("3.9.14" "3.8.9")
+MAVEN_VERSIONS=("3.9.15" "3.9.14" "3.8.9")
 declare -A MAVEN_URLS=(
-    ["3.9.14"]="https://dlcdn.apache.org/maven/maven-3/3.9.14/binaries/apache-maven-3.9.14-bin.tar.gz"
-    ["3.8.9"]="https://dlcdn.apache.org/maven/maven-3/3.8.9/binaries/apache-maven-3.8.9-bin.tar.gz")
+    ["3.9.15"]="https://archive.apache.org/dist/maven/maven-3/3.9.15/binaries/apache-maven-3.9.15-bin.tar.gz"
+    ["3.9.14"]="https://archive.apache.org/dist/maven/maven-3/3.9.14/binaries/apache-maven-3.9.14-bin.tar.gz"
+    ["3.8.9"]="https://archive.apache.org/dist/maven/maven-3/3.8.9/binaries/apache-maven-3.8.9-bin.tar.gz")
 
 GRADLE_VERSIONS=("9.4.1" "9.4.0" "9.3.1" "8.14.4" "8.14.3" "7.6.6")
 declare -A GRADLE_URLS=(

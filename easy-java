@@ -231,7 +231,7 @@ do_install_java() {
     JDK=$(get_jdk_dir "$VER")
     ensure_container
     echo "Downloading Java ${VER}..."
-    local TMPFILE="/tmp/java-${VER}.tar.gz"
+    local TMPFILE="$HOME/java-${VER}.tar.gz"
     gdown "https://drive.google.com/uc?id=$GDRIVE_ID" -O "$TMPFILE" --quiet
     if [ ! -f "$TMPFILE" ]; then
         echo -e "\033[01;31mDownload failed\033[0m"
@@ -269,7 +269,7 @@ do_install_maven() {
     local VER="$1"
     local URL="${MAVEN_URLS[$VER]}"
     echo "Downloading Maven ${VER}..."
-    local TMPFILE="/tmp/maven.tar.gz"
+    local TMPFILE="$HOME/maven.tar.gz"
     wget -q "$URL" -O "$TMPFILE"
     if [ ! -f "$TMPFILE" ]; then
         echo -e "\033[01;31mDownload failed\033[0m"
@@ -348,7 +348,7 @@ do_install_gradle() {
     local VER="$1"
     local URL="${GRADLE_URLS[$VER]}"
     echo "Downloading Gradle ${VER}..."
-    local TMPFILE="/tmp/gradle.zip"
+    local TMPFILE="$HOME/gradle.zip"
     wget -q "$URL" -O "$TMPFILE"
     if [ ! -f "$TMPFILE" ]; then
         echo -e "\033[01;31mDownload failed\033[0m"
@@ -358,16 +358,16 @@ do_install_gradle() {
     if [ "$IS_TERMUX" = false ]; then
         sudo rm -rf "$BASE_DIR/gradle"
         sudo mkdir -p "$BASE_DIR/gradle"
-        sudo unzip -q "$TMPFILE" -d /tmp
-        sudo mv /tmp/gradle-${VER}/* "$BASE_DIR/gradle/"
-        sudo rm -rf /tmp/gradle-${VER}
+        sudo unzip -q "$TMPFILE" -d $HOME
+        sudo mv $HOME/gradle-${VER}/* "$BASE_DIR/gradle/"
+        sudo rm -rf $HOME/gradle-${VER}
         echo "$VER" | sudo tee "$BASE_DIR/gradle/.version" > /dev/null
     else
         rm -rf "$BASE_DIR/gradle"
         mkdir -p "$BASE_DIR/gradle"
-        unzip -q "$TMPFILE" -d /tmp
-        mv /tmp/gradle-${VER}/* "$BASE_DIR/gradle/"
-        rm -rf /tmp/gradle-${VER}
+        unzip -q "$TMPFILE" -d $HOME
+        mv $HOME/gradle-${VER}/* "$BASE_DIR/gradle/"
+        rm -rf $HOME/gradle-${VER}
         echo "$VER" > "$BASE_DIR/gradle/.version"
     fi
     rm -f "$TMPFILE"

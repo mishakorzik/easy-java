@@ -1,0 +1,34 @@
+{
+  "Java": [
+    {"name": "Java 25", "url": {"arm64": "19_sCfGu7utK7X8mQntaw5rG5hujpaxeD", "x86_64": "13kNIYApQVOs22RcuHot6cyop0N-21GIE"}},
+    {"name": "Java 24", "url": {"arm64": "1tiQgFxp159Sbzaz3mR75Ubu6jmfWdFHy", "x86_64": "1O0TtrWuLsD1-ypJrvcZadKRCJ0Prn-Bg"}},
+    {"name": "Java 22", "url": {"arm64": "1FUy39jp_SBEqQCM_VCxzA-C0VvQo6qBA", "x86_64": "17uyLY0wkfewYOHmeoil2zn5fPU9p5xJ5"}},
+    {"name": "Java 21", "url": {"arm64": "1Q4T8ZA0C6V_cfDkYSIY1_QAw8dx6Grfr", "x86_64": "1k1Utg_eTLrNVCyYzAivga3QLp9H9Qd09"}},
+    {"name": "Java 20", "url": {"arm64": "17V6Y7khQZvt2dIvaqpI5cjVmtrQvpaQo"}},
+    {"name": "Java 19", "url": {"arm64": "1_lEitg91FWm4emuD1uamA7arl69MALEX"}},
+    {"name": "Java 17", "url": {"arm64": "1TIm71eN7srNf6n1W22HMkgbQKsRwJ8Ql", "x86_64": "1l9lPJ5yFWAiN9FV_IVOsW2cJi1oikJ9P"}},
+    {"name": "Java 16", "url": {"arm64": "1pjn8TrYY4CHkWV3OX840NgxQnymRJFMM", "x86_64": "1KaeQNZBzkVrvmFi3M89F0mHvep-1qzt_"}},
+    {"name": "Java 15", "url": {"arm64": "1FLtZKNmN0h_wSVlDRBYb6hC-vgQuZ2UE", "x86_64": "1qjIH9d_ILf-Lb6xp4jYMc5-ttkq290e7"}},
+    {"name": "Java 11", "url": {"arm64": "15bdPrYjl7f_wLHagetS-hM5mrEv0oe9J", "x86_64": "1OHKvUyKngNbVU7ShMyzCUa256MhdkKBl"}},
+    {"name": "Java 8", "url": {"arm64": "1Kk0rI-yfCoUnFbIjiZgez9cwWeukXgFQ", "x86_64": "1JBs8w75o19-22DqmovEKvIzPli48HfGg"}}
+  ],
+  "Maven": [
+    {"name": "Maven 3.9.16", "url": "https://archive.apache.org/dist/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.tar.gz"},
+    {"name": "Maven 3.9.15", "url": "https://archive.apache.org/dist/maven/maven-3/3.9.15/binaries/apache-maven-3.9.15-bin.tar.gz"},
+    {"name": "Maven 3.9.14", "url": "https://archive.apache.org/dist/maven/maven-3/3.9.14/binaries/apache-maven-3.9.14-bin.tar.gz"},
+    {"name": "Maven 3.9.9", "url": "https://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz"},
+    {"name": "Maven 3.8.9", "url": "https://archive.apache.org/dist/maven/maven-3/3.8.9/binaries/apache-maven-3.8.9-bin.tar.gz"}
+  ],
+  "Gradle": [
+    {"name": "Gradle 9.6.1", "url": "https://services.gradle.org/distributions/gradle-9.6.1-bin.zip"},
+    {"name": "Gradle 9.6.0", "url": "https://services.gradle.org/distributions/gradle-9.6.0-bin.zip"},
+    {"name": "Gradle 9.5.1", "url": "https://services.gradle.org/distributions/gradle-9.5.1-bin.zip"},
+    {"name": "Gradle 9.5.0", "url": "https://services.gradle.org/distributions/gradle-9.5.0-bin.zip"},
+    {"name": "Gradle 9.4.1", "url": "https://services.gradle.org/distributions/gradle-9.4.1-bin.zip"},
+    {"name": "Gradle 9.4.0", "url": "https://services.gradle.org/distributions/gradle-9.4.0-bin.zip"},
+    {"name": "Gradle 9.3.1", "url": "https://services.gradle.org/distributions/gradle-9.3.1-bin.zip"},
+    {"name": "Gradle 8.14.4", "url": "https://services.gradle.org/distributions/gradle-8.14.4-bin.zip"},
+    {"name": "Gradle 8.14.3", "url": "https://services.gradle.org/distributions/gradle-8.14.3-bin.zip"},
+    {"name": "Gradle 7.6.6", "url": "https://services.gradle.org/distributions/gradle-7.6.6-bin.zip"}
+  ]
+}

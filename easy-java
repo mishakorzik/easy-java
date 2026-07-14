@@ -1,0 +1,1342 @@
+#!/usr/bin/bash
+
+VERSION="2.0.5"
+check_update() {
+    local REMOTE NEWEST
+    REMOTE=$(wget -qO- "https://raw.githubusercontent.com/mishakorzik/easy-java/refs/heads/main/version.txt" 2>/dev/null | tr -d '[:space:]')
+    if [ -z "$REMOTE" ]; then
+        echo -e "\033[01;33mCould not check for updates (no internet or URL unavailable).\033[0m"
+        return
+    fi
+    if [ "$REMOTE" = "$VERSION" ]; then
+        return
+    fi
+    NEWEST=$(printf '%s\n' "$VERSION" "$REMOTE" | sort -V | tail -n 1)
+    if [ "$NEWEST" = "$REMOTE" ]; then
+        echo -e "\033[01;31mA new version is available: ${REMOTE} (you have ${VERSION}).\033[0m"
+        echo -e "\033[01;33mUpdate from: https://github.com/mishakorzik/easy-java\033[0m"
+        exit 1
+    else
+        echo -e "\033[01;33mThis installed build is newer than the repository version. Continuing with ${VERSION}.\033[0m"
+    fi
+}
+if [ -d "$PREFIX" ] && [ "$PREFIX" = "/data/data/com.termux/files/usr" ]; then
+    IS_TERMUX=true
+    BASE_DIR="/data/data/com.termux/files/java/usr/local"
+    CONTAINER_ROOT="/data/data/com.termux/files/java"
+else
+    IS_TERMUX=false
+    BASE_DIR="/usr/local"
+    CONTAINER_ROOT=""
+fi
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ]; then
+    SYSTEM_ARCH="arm64"
+    DEBIAN_ARCH="arm64"
+elif [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
+    SYSTEM_ARCH="x86_64"
+    DEBIAN_ARCH="amd64"
+else
+    echo "Unsupported architecture: $ARCH"
+    echo "Supported architectures: aarch64, x86_64, amd64"
+    exit 1
+fi
+if [ "$IS_TERMUX" = false ]; then
+    if ! grep -q "ID=debian" /etc/os-release && ! grep -q "ID=ubuntu" /etc/os-release; then
+        echo "This system is not supported. Supported systems: debian, ubuntu, termux."
+        exit 1
+    fi
+fi
+run_as_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo "$@"
+    else
+        echo -e "\033[01;31mAdministrator privileges are required, but sudo is not installed.\033[0m" >&2
+        return 1
+    fi
+}
+ensure_command_package() {
+    local COMMAND_NAME="$1"
+    local PACKAGE_NAME="$2"
+    if command -v "$COMMAND_NAME" >/dev/null 2>&1; then
+        echo -e "${COMMAND_NAME} is \033[01;32minstalled\033[0m"
+        return 0
+    fi
+
+    echo -e "${COMMAND_NAME} is \033[01;31mnot\033[0m installed"
+    if [ "$IS_TERMUX" = true ]; then
+        pkg install "$PACKAGE_NAME" -y || return 1
+    else
+        run_as_root apt install "$PACKAGE_NAME" -y || return 1
+    fi
+    command -v "$COMMAND_NAME" >/dev/null 2>&1
+}
+
+if [ "$IS_TERMUX" = true ]; then
+    ensure_command_package proot proot || exit 1
+    ensure_command_package debootstrap debootstrap || exit 1
+fi
+ensure_command_package tar tar || exit 1
+ensure_command_package wget wget || exit 1
+ensure_command_package unzip unzip || exit 1
+ensure_command_package jq jq || exit 1
+check_update
+JSON_DATA=$(wget -qO- "https://raw.githubusercontent.com/mishakorzik/easy-java/refs/heads/main/versions.json")
+if [ -z "$JSON_DATA" ] || ! jq -e . <<< "$JSON_DATA" >/dev/null 2>&1; then
+    echo -e "\033[01;31mCould not download or parse versions.json from \"https://raw.githubusercontent.com/mishakorzik/easy-java/refs/heads/main/versions.json\"\033[0m"
+    exit 1
+fi
+sanitize_key() {
+    printf '%s' "$1" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//'
+}
+slugify() {
+    printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '_' | sed -E 's/_+/_/g; s/^_+//; s/_+$//'
+}
+escape_regex() {
+    printf '%s' "$1" | sed -e 's/[][\.*^$/]/\\&/g'
+}
+java_id() {
+    local n
+    n=$(printf '%s' "$1" | sed -E 's/^[Jj][Aa][Vv][Aa][[:space:]]+//')
+    sanitize_key "$n"
+}
+normalize_menu_choice() {
+    local VALUE="$1"
+    [[ "$VALUE" =~ ^[0-9]+$ ]] || return 1
+    while [ "${VALUE#0}" != "$VALUE" ]; do
+        VALUE="${VALUE#0}"
+    done
+    [ -n "$VALUE" ] || VALUE=0
+    printf '%s\n' "$VALUE"
+}
+read_menu_choice() {
+    local __RESULT_VAR="$1"
+    local PROMPT_TEXT="${2:-Choose: }"
+    local RAW NORMALIZED
+    read -r -p "$PROMPT_TEXT" RAW
+    if NORMALIZED=$(normalize_menu_choice "$RAW"); then
+        printf -v "$__RESULT_VAR" '%s' "$NORMALIZED"
+    else
+        printf -v "$__RESULT_VAR" '%s' ''
+    fi
+}
+CATEGORY_NAMES=()
+CATEGORY_SLUGS=()
+while IFS= read -r cat; do
+    [ -z "$cat" ] && continue
+    CATEGORY_NAMES+=("$cat")
+    slug=$(slugify "$cat")
+    [ -z "$slug" ] && slug="cat${#CATEGORY_NAMES[@]}"
+    CATEGORY_SLUGS+=("$slug")
+done < <(jq -r 'keys_unsorted[]' <<< "$JSON_DATA" 2>/dev/null)
+JAVA_NAMES=()
+JAVA_URLS=()
+for cat_idx in "${!CATEGORY_NAMES[@]}"; do
+    [ "${CATEGORY_NAMES[$cat_idx]}" = "Java" ] && continue
+    declare -ga "NAMES_${CATEGORY_SLUGS[$cat_idx]}=()"
+    declare -ga "URLS_${CATEGORY_SLUGS[$cat_idx]}=()"
+done
+unset cat_idx
+append_entry() {
+    local slug="$1"
+    local name="$2"
+    local url="$3"
+    local -n n_ref="NAMES_${slug}"
+    local -n u_ref="URLS_${slug}"
+    n_ref+=("$name")
+    u_ref+=("$url")
+}
+load_versions() {
+    local cat name url slug
+    while IFS=$'\t' read -r cat name url; do
+        [ -z "$cat" ] && continue
+        if [ "$cat" = "Java" ]; then
+            JAVA_NAMES+=("$name")
+            JAVA_URLS+=("$url")
+        else
+            slug=$(slugify "$cat")
+            [ -z "$slug" ] && continue
+            append_entry "$slug" "$name" "$url"
+        fi
+    done < <(jq -r 'to_entries[] as $e | $e.value[] | [$e.key, .name, (.url|tojson)] | @tsv' <<< "$JSON_DATA" 2>/dev/null)
+}
+load_versions
+resolve_url() {
+    local raw="$1"
+    local t
+    t=$(printf '%s' "$raw" | jq -r 'type' 2>/dev/null)
+    if [ "$t" = "object" ]; then
+        printf '%s' "$raw" | jq -r --arg a "$SYSTEM_ARCH" '.[$a] // empty' 2>/dev/null
+    elif [ "$t" = "string" ]; then
+        printf '%s' "$raw" | jq -r '.' 2>/dev/null
+    fi
+}
+is_direct_url() {
+    [[ "$1" =~ ^https?:// ]]
+}
+ensure_gdown() {
+    command -v gdown >/dev/null 2>&1 && return 0
+    echo -e "gdown is \033[01;31mnot\033[0m installed; installing it for this Google Drive download..."
+    if ! command -v python3 >/dev/null 2>&1; then
+        if [ "$IS_TERMUX" = true ]; then
+            pkg install python -y || return 1
+        else
+            run_as_root apt install python3 python3-pip -y || return 1
+        fi
+    fi
+    if [ "$IS_TERMUX" = true ]; then
+        python3 -m pip install gdown
+    else
+        run_as_root python3 -m pip install gdown
+    fi
+}
+
+download_asset() {
+    local raw_url="$1"
+    local out="$2"
+    if is_direct_url "$raw_url"; then
+        wget "$raw_url" -O "$out"
+    else
+        ensure_gdown || return 1
+        gdown "https://drive.google.com/uc?id=${raw_url}" -O "$out"
+    fi
+}
+detect_archive_type() {
+    local f="$1"
+    local head
+    head=$(head -c 4 "$f" 2>/dev/null | od -An -tx1 | tr -d ' \n')
+    case "$head" in
+        504b0304|504b0506|504b0708) echo "zip" ;;
+        1f8b*) echo "targz" ;;
+        *) echo "unknown" ;;
+    esac
+}
+install_extracted_tree() {
+    local ARCHIVE="$1"
+    local TARGET="$2"
+    local TYPE="$3"
+    local TMP SRC STATUS
+
+    TMP=$(mktemp -d) || return 1
+    case "$TYPE" in
+        targz) tar -xzf "$ARCHIVE" -C "$TMP" || { rm -rf "$TMP"; return 1; } ;;
+        zip) unzip -q "$ARCHIVE" -d "$TMP" || { rm -rf "$TMP"; return 1; } ;;
+        *) rm -rf "$TMP"; return 1 ;;
+    esac
+
+    local ENTRIES=()
+    shopt -s nullglob dotglob
+    ENTRIES=("$TMP"/*)
+    shopt -u nullglob dotglob
+    [ ${#ENTRIES[@]} -gt 0 ] || { rm -rf "$TMP"; return 1; }
+
+    SRC="$TMP"
+    if [ ${#ENTRIES[@]} -eq 1 ] && [ -d "${ENTRIES[0]}" ]; then
+        SRC="${ENTRIES[0]}"
+    fi
+
+    STATUS=0
+    if [ "$IS_TERMUX" = false ]; then
+        if run_as_root rm -rf "${TARGET:?}" &&
+           run_as_root mkdir -p "$TARGET" &&
+           run_as_root cp -a "$SRC"/. "$TARGET"/; then
+            :
+        else
+            STATUS=1
+        fi
+    else
+        if rm -rf "${TARGET:?}" &&
+           mkdir -p "$TARGET" &&
+           cp -a "$SRC"/. "$TARGET"/; then
+            :
+        else
+            STATUS=1
+        fi
+    fi
+    rm -rf "$TMP"
+    return "$STATUS"
+}
+
+install_extract_targz() {
+    install_extracted_tree "$1" "$2" targz
+}
+
+install_extract_zip() {
+    install_extracted_tree "$1" "$2" zip
+}
+
+install_extract_auto() {
+    local FILE="$1"
+    local TARGET="$2"
+    local TYPE
+    TYPE=$(detect_archive_type "$FILE")
+    case "$TYPE" in
+        zip|targz) install_extracted_tree "$FILE" "$TARGET" "$TYPE" ;;
+        *) echo -e "\033[01;31mUnknown archive format\033[0m"; return 1 ;;
+    esac
+}
+
+get_rc_file() {
+    if [ -d "$HOME/.oh-my-zsh" ]; then
+        echo "$HOME/.zshrc"
+    elif [ "$IS_TERMUX" = true ]; then
+        echo "$PREFIX/etc/bash.bashrc"
+    else
+        echo "$HOME/.bashrc"
+    fi
+}
+is_java_installed() {
+    [ -x "$BASE_DIR/jdk-$(java_id "$1")/bin/java" ]
+}
+get_installed_java_names() {
+    local i NAME ID DIR
+    local -A SEEN=()
+    # Prefer the names from versions.json, but do not lose already installed
+    # JDKs when a version is removed or renamed in the remote file.
+    for i in "${!JAVA_NAMES[@]}"; do
+        NAME="${JAVA_NAMES[$i]}"
+        if is_java_installed "$NAME"; then
+            ID=$(java_id "$NAME")
+            SEEN["$ID"]=1
+            printf '%s\n' "$NAME"
+        fi
+    done
+    for DIR in "$BASE_DIR"/jdk-*; do
+        [ -d "$DIR" ] || continue
+        [ -x "$DIR/bin/java" ] || continue
+        ID="${DIR##*/jdk-}"
+        [ -n "$ID" ] || continue
+        [ -n "${SEEN[$ID]+x}" ] && continue
+        printf 'Java %s\n' "$ID"
+    done
+}
+has_installed_java() {
+    [ -n "$(get_installed_java_names | head -n 1)" ]
+}
+require_installed_java() {
+    local CATEGORY="$1"
+    local ACTION="${2:-install}"
+    if has_installed_java; then
+        return 0
+    fi
+    echo -e "\033[01;31mCannot ${ACTION} ${CATEGORY}: no Java version is installed. Install Java first.\033[0m"
+    return 1
+}
+is_category_installed() { [ -d "$BASE_DIR/$1/bin" ] && [ -n "$(get_bin_tools "$1" | head -n 1)" ]; }
+get_category_version() { [ -f "$BASE_DIR/$1/.version" ] && cat "$BASE_DIR/$1/.version" || echo ""; }
+get_bin_tools() {
+    local dir="$1"
+    local bin="$BASE_DIR/${dir}/bin"
+    [ -d "$bin" ] || return
+    local f
+    for f in "$bin"/*; do
+        [ -f "$f" ] && [ -x "$f" ] && printf '%s\n' "$(basename "$f")"
+    done
+}
+container_layout_is_valid() {
+    [ -x "$CONTAINER_ROOT/bin/bash" ] &&
+        [ -f "$CONTAINER_ROOT/etc/os-release" ] &&
+        grep -q "ID=debian" "$CONTAINER_ROOT/etc/os-release" 2>/dev/null
+}
+ensure_container() {
+    [ "$IS_TERMUX" = false ] && return
+    if [ -d "$CONTAINER_ROOT" ]; then
+        if container_layout_is_valid; then
+            echo "Skipping Debian container install (already exists)"
+            return
+        fi
+        echo -e "\033[01;33mThe existing Debian container is incomplete; rebuilding it.\033[0m"
+        rm -rf "${CONTAINER_ROOT:?}" || return 1
+    fi
+
+    echo "Installing Debian container (this will take a while)..."
+    if ! debootstrap --variant=minbase --arch="$DEBIAN_ARCH" --components=main stable \
+        "$CONTAINER_ROOT" http://ftp.debian.org/debian/ > /dev/null 2>&1; then
+        rm -rf "${CONTAINER_ROOT:?}"
+        echo -e "\033[01;31mFailed to install Debian container\033[0m"
+        return 1
+    fi
+
+    echo "Verifying Debian container..."
+    unset LD_PRELOAD
+    local PROOT_ARGS=(
+        -0 --link2symlink -r "$CONTAINER_ROOT" -w /root
+        -b /dev/ -b /sys/ -b /proc/ -b "$HOME"
+    )
+    if proot "${PROOT_ARGS[@]}" /usr/bin/env -i HOME=/root \
+        TERM="xterm-256color" PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+        grep -q "ID=debian" /etc/os-release; then
+        echo -e "Debian container \033[01;32minstalled\033[0m"
+    else
+        rm -rf "${CONTAINER_ROOT:?}"
+        echo -e "\033[01;31mFailed to verify Debian container\033[0m"
+        return 1
+    fi
+}
+# Shell commands are stored in the user's rc file. System commands are simple
+# executable scripts in /usr/bin on Debian/Ubuntu. Termux uses $PREFIX/bin
+# because Android does not provide a writable host /usr/bin directory.
+INTEGRATION_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/easy-java/integrations"
+if [ "$IS_TERMUX" = true ]; then
+    WRAPPER_DIR="$PREFIX/bin"
+else
+    WRAPPER_DIR="/usr/bin"
+fi
+integration_manifest_path() {
+    local OWNER
+    OWNER=$(sanitize_key "$1")
+    printf '%s/%s.tools' "$INTEGRATION_DIR" "$OWNER"
+}
+integration_wrapper_manifest_path() {
+    local OWNER
+    OWNER=$(sanitize_key "$1")
+    printf '%s/%s.system-commands' "$INTEGRATION_DIR" "$OWNER"
+}
+integration_owner_java() {
+    printf 'java-%s' "$1"
+}
+
+integration_owner_category() {
+    printf '%s-java-%s' "$1" "$2"
+}
+
+is_supported_tool_name() {
+    [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_.-]*$ ]]
+}
+all_rc_files() {
+    local FILES=("$(get_rc_file)" "$HOME/.bashrc" "$HOME/.zshrc")
+    if [ "$IS_TERMUX" = true ]; then
+        FILES+=("$PREFIX/etc/bash.bashrc" "$CONTAINER_ROOT/root/.bashrc")
+    fi
+    printf '%s\n' "${FILES[@]}" | awk 'NF && !seen[$0]++'
+}
+remove_managed_rc_block() {
+    local OWNER="$1"
+    local BEGIN_MARKER="# >>> easy-java:${OWNER} >>>"
+    local END_MARKER="# <<< easy-java:${OWNER} <<<"
+    local RC TMP
+    local STATUS=0
+    while IFS= read -r RC; do
+        [ -f "$RC" ] || continue
+        grep -Fqx "$BEGIN_MARKER" "$RC" 2>/dev/null || continue
+        TMP=$(mktemp) || { STATUS=1; continue; }
+        if ! awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" '
+            $0 == begin { skip=1; next }
+            $0 == end { skip=0; next }
+            !skip { print }
+        ' "$RC" > "$TMP" || ! cat "$TMP" > "$RC"; then
+            STATUS=1
+        fi
+        rm -f "$TMP"
+    done < <(all_rc_files)
+    return "$STATUS"
+}
+remove_legacy_command_from_rc() {
+    local COMMAND_NAME="$1"
+    local ESCAPED RC
+    local STATUS=0
+    ESCAPED=$(escape_regex "$COMMAND_NAME")
+    while IFS= read -r RC; do
+        [ -f "$RC" ] || continue
+        if grep -Eq "^[[:space:]]*(${ESCAPED}\(\)[[:space:]]*\{|alias[[:space:]]+${ESCAPED}=)" "$RC" 2>/dev/null; then
+            sed -i "/^[[:space:]]*${ESCAPED}()[[:space:]]*{/,/^[[:space:]]*}/d" "$RC" 2>/dev/null || STATUS=1
+            sed -i "/^[[:space:]]*alias[[:space:]]\+${ESCAPED}=/d" "$RC" 2>/dev/null || STATUS=1
+        fi
+    done < <(all_rc_files)
+    return "$STATUS"
+}
+remove_file_with_privileges() {
+    local PATHNAME="$1"
+    [ -e "$PATHNAME" ] || [ -L "$PATHNAME" ] || return 0
+    if [ "$IS_TERMUX" = true ]; then
+        rm -f "$PATHNAME"
+    else
+        run_as_root rm -f "$PATHNAME"
+    fi
+}
+system_command_dirs() {
+    local DIRS=("$WRAPPER_DIR" "/usr/bin" "/usr/local/bin")
+    if [ "$IS_TERMUX" = true ]; then
+        DIRS+=("$PREFIX/bin")
+    fi
+    printf '%s\n' "${DIRS[@]}" | awk 'NF && !seen[$0]++'
+}
+
+integration_owner_java_id() {
+    local OWNER="$1"
+    case "$OWNER" in
+        java-*) printf '%s\n' "${OWNER#java-}" ;;
+        *-java-*) printf '%s\n' "${OWNER##*-java-}" ;;
+        *) return 1 ;;
+    esac
+}
+remove_system_command_if_owned() {
+    local OWNER="$1"
+    local COMMAND_NAME="$2"
+    local MANIFEST JAVA_ID DIR PATHNAME OWNED
+    local STATUS=0
+    MANIFEST=$(integration_wrapper_manifest_path "$OWNER")
+    JAVA_ID=$(integration_owner_java_id "$OWNER" 2>/dev/null || true)
+    while IFS= read -r DIR; do
+        PATHNAME="$DIR/$COMMAND_NAME"
+        [ -f "$PATHNAME" ] || [ -L "$PATHNAME" ] || continue
+        OWNED=false
+        if [ -f "$MANIFEST" ] && grep -Fqx "$COMMAND_NAME" "$MANIFEST" 2>/dev/null; then
+            OWNED=true
+        elif grep -Fqx "# easy-java-owner: ${OWNER}" "$PATHNAME" 2>/dev/null; then
+            OWNED=true
+        elif [ -n "$JAVA_ID" ] &&
+             { grep -Fq "jdk-${JAVA_ID}" "$PATHNAME" 2>/dev/null ||
+               grep -Fq "java-${JAVA_ID};" "$PATHNAME" 2>/dev/null; }; then
+            OWNED=true
+        fi
+        if [ "$OWNED" = true ]; then
+            remove_file_with_privileges "$PATHNAME" || STATUS=1
+        fi
+    done < <(system_command_dirs)
+    return "$STATUS"
+}
+remove_integration_owner() {
+    local OWNER="$1"
+    shift
+    local MANIFEST WRAPPER_MANIFEST ITEM
+    local STATUS=0
+    local COMMANDS=("$@")
+    MANIFEST=$(integration_manifest_path "$OWNER")
+    WRAPPER_MANIFEST=$(integration_wrapper_manifest_path "$OWNER")
+    if [ -f "$MANIFEST" ]; then
+        while IFS= read -r ITEM; do
+            [ -n "$ITEM" ] && COMMANDS+=("$ITEM")
+        done < "$MANIFEST"
+    fi
+    if [ -f "$WRAPPER_MANIFEST" ]; then
+        while IFS= read -r ITEM; do
+            [ -n "$ITEM" ] && COMMANDS+=("$ITEM")
+        done < "$WRAPPER_MANIFEST"
+    fi
+    remove_managed_rc_block "$OWNER" || STATUS=1
+    if [ ${#COMMANDS[@]} -gt 0 ]; then
+        mapfile -t COMMANDS < <(printf '%s\n' "${COMMANDS[@]}" | awk 'NF && !seen[$0]++')
+        for ITEM in "${COMMANDS[@]}"; do
+            remove_legacy_command_from_rc "$ITEM" || STATUS=1
+            remove_system_command_if_owned "$OWNER" "$ITEM" || STATUS=1
+        done
+    fi
+    if [ "$STATUS" -eq 0 ]; then
+        rm -f "$MANIFEST" "$WRAPPER_MANIFEST" || STATUS=1
+    fi
+    return "$STATUS"
+}
+# Remove integrations by their embedded Java reference, even when a category
+# was renamed in versions.json or an older easy-java release left no manifest.
+remove_managed_rc_blocks_for_java() {
+    local JAVA_ID="$1"
+    local RC TMP
+    local STATUS=0
+    while IFS= read -r RC; do
+        [ -f "$RC" ] || continue
+        grep -Fq "java-${JAVA_ID}" "$RC" 2>/dev/null || continue
+        TMP=$(mktemp) || { STATUS=1; continue; }
+        if ! awk -v id="$JAVA_ID" '
+            function ends_with(value, suffix) {
+                return length(value) >= length(suffix) && \
+                    substr(value, length(value) - length(suffix) + 1) == suffix
+            }
+            /^# >>> easy-java:/ {
+                owner=$0
+                sub(/^# >>> easy-java:/, "", owner)
+                sub(/ >>>$/, "", owner)
+                if (owner == "java-" id || ends_with(owner, "-java-" id)) {
+                    skipped_owner=owner
+                    skip=1
+                    next
+                }
+            }
+            skip && $0 == "# <<< easy-java:" skipped_owner " <<<" {
+                skip=0
+                skipped_owner=""
+                next
+            }
+            !skip { print }
+        ' "$RC" > "$TMP" || ! cat "$TMP" > "$RC"; then
+            STATUS=1
+        fi
+        rm -f "$TMP"
+    done < <(all_rc_files)
+    return "$STATUS"
+}
+remove_legacy_java_entries_from_rc() {
+    local JAVA_ID="$1"
+    local RC TMP
+    local STATUS=0
+    while IFS= read -r RC; do
+        [ -f "$RC" ] || continue
+        grep -Fq "${JAVA_ID}" "$RC" 2>/dev/null || continue
+        TMP=$(mktemp) || { STATUS=1; continue; }
+        if ! awk -v id="$JAVA_ID" '
+            function trim(value) {
+                sub(/^[[:space:]]+/, "", value)
+                sub(/[[:space:]]+$/, "", value)
+                return value
+            }
+            function ends_with(value, suffix) {
+                return length(value) >= length(suffix) && \
+                    substr(value, length(value) - length(suffix) + 1) == suffix
+            }
+            function linked(value) {
+                return index(value, "jdk-" id) || index(value, "java-" id)
+            }
+            function generated(value) {
+                return index(value, "JAVA_HOME") || index(value, "proot ") || \
+                    index(value, "LD_PRELOAD") || index(value, "/usr/bin/env -i") || \
+                    index(value, "easy-java")
+            }
+            function flush_function() {
+                if (!(linked(function_text) && generated(function_text))) {
+                    printf "%s", function_text
+                }
+                in_function=0
+                function_text=""
+            }
+            {
+                line=$0
+                if (in_function) {
+                    function_text=function_text line ORS
+                    if (line ~ /^[[:space:]]*}[[:space:]]*$/) {
+                        flush_function()
+                    }
+                    next
+                }
+                if (line ~ /^[[:space:]]*alias[[:space:]]+[^=]+=/) {
+                    alias_name=line
+                    sub(/^[[:space:]]*alias[[:space:]]+/, "", alias_name)
+                    sub(/=.*/, "", alias_name)
+                    alias_name=trim(alias_name)
+                    if (ends_with(alias_name, "-" id) && linked(line) && generated(line)) {
+                        next
+                    }
+                }
+                if (line ~ /\(\)[[:space:]]*\{[[:space:]]*$/) {
+                    function_name=line
+                    sub(/\(\).*/, "", function_name)
+                    function_name=trim(function_name)
+                    if (ends_with(function_name, "-" id)) {
+                        in_function=1
+                        function_text=line ORS
+                        next
+                    }
+                }
+                print line
+            }
+            END {
+                if (in_function) {
+                    flush_function()
+                }
+            }
+        ' "$RC" > "$TMP" || ! cat "$TMP" > "$RC"; then
+            STATUS=1
+        fi
+        rm -f "$TMP"
+    done < <(all_rc_files)
+    return "$STATUS"
+}
+remove_java_linked_system_commands() {
+    local JAVA_ID="$1"
+    local DIR PATHNAME
+    local STATUS=0
+    while IFS= read -r DIR; do
+        [ -d "$DIR" ] || continue
+        while IFS= read -r -d '' PATHNAME; do
+            [ -f "$PATHNAME" ] || [ -L "$PATHNAME" ] || continue
+            if { grep -Fq "jdk-${JAVA_ID}" "$PATHNAME" 2>/dev/null ||
+                 grep -Fq "java-${JAVA_ID};" "$PATHNAME" 2>/dev/null; } &&
+               { grep -Fq "JAVA_HOME" "$PATHNAME" 2>/dev/null ||
+                 grep -Fq "proot " "$PATHNAME" 2>/dev/null ||
+                 grep -Fq "easy-java-owner:" "$PATHNAME" 2>/dev/null; }; then
+                remove_file_with_privileges "$PATHNAME" || STATUS=1
+            fi
+        done < <(find "$DIR" -maxdepth 1 \( -type f -o -type l \) -name "*-${JAVA_ID}" -print0 2>/dev/null)
+    done < <(system_command_dirs)
+    return "$STATUS"
+}
+remove_manifest_integrations_for_java() {
+    local JAVA_ID="$1"
+    [ -d "$INTEGRATION_DIR" ] || return 0
+    local FILE BASENAME OWNER
+    local STATUS=0
+    local OWNERS=()
+    for FILE in \
+        "$INTEGRATION_DIR"/*-java-"$JAVA_ID".tools \
+        "$INTEGRATION_DIR"/*-java-"$JAVA_ID".system-commands; do
+        [ -e "$FILE" ] || continue
+        BASENAME=$(basename "$FILE")
+        OWNER="${BASENAME%.tools}"
+        OWNER="${OWNER%.system-commands}"
+        OWNERS+=("$OWNER")
+    done
+    [ ${#OWNERS[@]} -gt 0 ] || return 0
+    mapfile -t OWNERS < <(printf '%s\n' "${OWNERS[@]}" | awk 'NF && !seen[$0]++')
+    for OWNER in "${OWNERS[@]}"; do
+        remove_integration_owner "$OWNER" || STATUS=1
+    done
+    return "$STATUS"
+}
+save_integration_manifest() {
+    local OWNER="$1"
+    shift
+    mkdir -p "$INTEGRATION_DIR" || return 1
+    local MANIFEST
+    MANIFEST=$(integration_manifest_path "$OWNER")
+    printf '%s\n' "$@" | awk 'NF && !seen[$0]++' > "$MANIFEST"
+}
+save_system_command_manifest() {
+    local OWNER="$1"
+    shift
+    mkdir -p "$INTEGRATION_DIR" || return 1
+    local MANIFEST
+    MANIFEST=$(integration_wrapper_manifest_path "$OWNER")
+    printf '%s\n' "$@" | awk 'NF && !seen[$0]++' > "$MANIFEST"
+}
+ensure_termux_java_selector() {
+    local JAVA_ID="$1"
+    [ "$IS_TERMUX" = true ] || return 0
+
+    local ROOT_RC="$CONTAINER_ROOT/root/.bashrc"
+    local ESCAPED_ID
+    ESCAPED_ID=$(escape_regex "$JAVA_ID")
+    mkdir -p "$(dirname "$ROOT_RC")" || return 1
+    touch "$ROOT_RC" || return 1
+    sed -i "/^alias java-${ESCAPED_ID}=/d" "$ROOT_RC" 2>/dev/null
+    printf "alias java-%s='export JAVA_HOME=/usr/local/jdk-%s && export PATH=\$JAVA_HOME/bin:\$PATH'\n" \
+        "$JAVA_ID" "$JAVA_ID" >> "$ROOT_RC"
+}
+write_system_command() {
+    local COMMAND_NAME="$1"
+    local JAVA_ID="$2"
+    local SLUG="$3"
+    local TOOL="$4"
+    local PATHNAME="$WRAPPER_DIR/$COMMAND_NAME"
+    if [ -e "$PATHNAME" ] || [ -L "$PATHNAME" ]; then
+        echo -e "\033[01;33mSkipping ${PATHNAME}: this command already exists.\033[0m"
+        return 1
+    fi
+    local TMP STATUS=0
+    TMP=$(mktemp) || return 1
+    if [ "$IS_TERMUX" = true ]; then
+        local INNER
+        if [ -z "$SLUG" ]; then
+            ensure_termux_java_selector "$JAVA_ID" || STATUS=1
+            printf -v INNER 'java-%s; exec %s "$@"' "$JAVA_ID" "$TOOL"
+        else
+            printf -v INNER 'export JAVA_HOME=/usr/local/jdk-%s; export PATH="$JAVA_HOME/bin:/usr/local/%s/bin:$PATH"; exec %s "$@"' "$JAVA_ID" "$SLUG" "$TOOL"
+        fi
+        if [ "$STATUS" -eq 0 ]; then
+            printf '#!%s/bin/bash\n' "$PREFIX" > "$TMP"
+            printf 'echo -e "\\033[01;34m%s args\\033[0m: $*"\n' "$TOOL" >> "$TMP"
+            printf 'unset LD_PRELOAD\n' >> "$TMP"
+            # Binding the current directory makes -w "$PWD" valid even when the
+            # command is started from $PREFIX/bin or another Android-only path.
+            printf '%s' 'exec proot -0 --link2symlink -r "$PREFIX/../java" -b "$PWD" -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b "$HOME" /usr/bin/env -i HOME=/root TERM="${TERM:-xterm-256color}" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic ' >> "$TMP"
+            printf "'%s' bash \"\$@\"\n" "$INNER" >> "$TMP"
+            if ! mkdir -p "$WRAPPER_DIR" || ! install -m 0755 "$TMP" "$PATHNAME"; then
+                STATUS=1
+            fi
+        fi
+    else
+        local JAVA_HOME_PATH="$BASE_DIR/jdk-${JAVA_ID}"
+        local EXTRA_BIN=""
+        if [ -n "$SLUG" ]; then
+            EXTRA_BIN="$BASE_DIR/${SLUG}/bin"
+        fi
+        printf '#!/usr/bin/bash\n' > "$TMP"
+        printf 'export JAVA_HOME=%q\n' "$JAVA_HOME_PATH" >> "$TMP"
+        if [ -n "$EXTRA_BIN" ]; then
+            printf 'export PATH="$JAVA_HOME/bin:%s:$PATH"\n' "$EXTRA_BIN" >> "$TMP"
+        else
+            printf 'export PATH="$JAVA_HOME/bin:$PATH"\n' >> "$TMP"
+        fi
+        printf 'echo -e "\\033[01;34m%s args\\033[0m: $*"\n' "$TOOL" >> "$TMP"
+        printf 'exec %q "$@"\n' "$TOOL" >> "$TMP"
+        if ! run_as_root mkdir -p "$WRAPPER_DIR" ||
+           ! run_as_root install -m 0755 "$TMP" "$PATHNAME"; then
+            STATUS=1
+        fi
+    fi
+    rm -f "$TMP"
+    return "$STATUS"
+}
+write_managed_rc_block() {
+    local OWNER="$1"
+    local JAVA_ID="$2"
+    local SLUG="$3"
+    shift 3
+    local TOOLS=("$@")
+    local RC
+    RC=$(get_rc_file)
+    mkdir -p "$(dirname "$RC")" || return 1
+    touch "$RC" || return 1
+    if [ "$IS_TERMUX" = true ] && [ -z "$SLUG" ]; then
+        ensure_termux_java_selector "$JAVA_ID" || return 1
+    fi
+    local TMP
+    TMP=$(mktemp) || return 1
+    printf '# >>> easy-java:%s >>>\n' "$OWNER" > "$TMP"
+    local TOOL COMMAND_NAME
+    for TOOL in "${TOOLS[@]}"; do
+        COMMAND_NAME="${TOOL}-${JAVA_ID}"
+        printf '%s() {\n' "$COMMAND_NAME" >> "$TMP"
+        printf '  echo -e "\\033[01;34m%s args\\033[0m: $*"\n' "$TOOL" >> "$TMP"
+        if [ "$IS_TERMUX" = true ]; then
+            local INNER
+            if [ -z "$SLUG" ]; then
+                printf -v INNER 'java-%s; exec %s "$@"' "$JAVA_ID" "$TOOL"
+            else
+                printf -v INNER 'export JAVA_HOME=/usr/local/jdk-%s; export PATH="$JAVA_HOME/bin:/usr/local/%s/bin:$PATH"; exec %s "$@"' \
+                    "$JAVA_ID" "$SLUG" "$TOOL"
+            fi
+            printf '  unset LD_PRELOAD\n' >> "$TMP"
+            printf '%s' '  proot -0 --link2symlink -r "$PREFIX/../java" -b "$PWD" -w "$PWD" -b /dev/ -b /sys/ -b /proc/ -b "$HOME" /usr/bin/env -i HOME=/root TERM="${TERM:-xterm-256color}" PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash -ic ' >> "$TMP"
+            printf "'%s' bash \"\$@\"\n" "$INNER" >> "$TMP"
+        else
+            local JAVA_HOME_PATH="$BASE_DIR/jdk-${JAVA_ID}"
+            local EXTRA_BIN=""
+            if [ -n "$SLUG" ]; then
+                EXTRA_BIN="$BASE_DIR/${SLUG}/bin"
+            fi
+            printf '  export JAVA_HOME=%q\n' "$JAVA_HOME_PATH" >> "$TMP"
+            if [ -n "$EXTRA_BIN" ]; then
+                printf '  export PATH="$JAVA_HOME/bin:%s:$PATH"\n' "$EXTRA_BIN" >> "$TMP"
+            else
+                printf '  export PATH="$JAVA_HOME/bin:$PATH"\n' >> "$TMP"
+            fi
+            printf '  command %q "$@"\n' "$TOOL" >> "$TMP"
+        fi
+        printf '}\n' >> "$TMP"
+    done
+    printf '# <<< easy-java:%s <<<\n' "$OWNER" >> "$TMP"
+    local STATUS=0
+    cat "$TMP" >> "$RC" || STATUS=$?
+    rm -f "$TMP"
+    return "$STATUS"
+}
+register_tool_integration() {
+    local OWNER="$1"
+    local JAVA_ID="$2"
+    local SLUG="$3"
+    local METHOD="$4"
+    shift 4
+    local RAW_TOOLS=("$@")
+    local TOOLS=()
+    local COMMANDS=()
+    local CREATED_SYSTEM_COMMANDS=()
+    local TOOL COMMAND_NAME
+    for TOOL in "${RAW_TOOLS[@]}"; do
+        if is_supported_tool_name "$TOOL"; then
+            TOOLS+=("$TOOL")
+            COMMANDS+=("${TOOL}-${JAVA_ID}")
+        else
+            echo -e "\033[01;33mSkipping unsupported executable name: ${TOOL}\033[0m"
+        fi
+    done
+    if [ ${#TOOLS[@]} -eq 0 ]; then
+        echo -e "\033[01;31mNo executable tools were found to register.\033[0m"
+        return 1
+    fi
+    mapfile -t TOOLS < <(printf '%s\n' "${TOOLS[@]}" | awk 'NF && !seen[$0]++')
+    COMMANDS=()
+    for TOOL in "${TOOLS[@]}"; do
+        COMMANDS+=("${TOOL}-${JAVA_ID}")
+    done
+    remove_integration_owner "$OWNER" "${COMMANDS[@]}"
+    case "$METHOD" in
+        1)
+            write_managed_rc_block "$OWNER" "$JAVA_ID" "$SLUG" "${TOOLS[@]}" || return 1
+            ;;
+        2)
+            for TOOL in "${TOOLS[@]}"; do
+                COMMAND_NAME="${TOOL}-${JAVA_ID}"
+                if write_system_command "$COMMAND_NAME" "$JAVA_ID" "$SLUG" "$TOOL"; then
+                    CREATED_SYSTEM_COMMANDS+=("$COMMAND_NAME")
+                fi
+            done
+            if [ ${#CREATED_SYSTEM_COMMANDS[@]} -eq 0 ]; then
+                echo -e "\033[01;31mNo system commands were created.\033[0m"
+                return 1
+            fi
+            COMMANDS=("${CREATED_SYSTEM_COMMANDS[@]}")
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+    save_integration_manifest "$OWNER" "${COMMANDS[@]}" || return 1
+    if [ "$METHOD" = "2" ]; then
+        save_system_command_manifest "$OWNER" "${CREATED_SYSTEM_COMMANDS[@]}" || return 1
+    fi
+
+    local EXAMPLE="${COMMANDS[0]}"
+    case "$METHOD" in
+        1) echo -e "\033[01;32mAdded ${#COMMANDS[@]} commands\033[0m to $(get_rc_file). Example: ${EXAMPLE}" ;;
+        2) echo -e "\033[01;32mAdded ${#CREATED_SYSTEM_COMMANDS[@]} commands\033[0m to ${WRAPPER_DIR}. Example: ${EXAMPLE}" ;;
+    esac
+}
+prompt_integration_method() {
+    SELECTED_INTEGRATION_METHOD=""
+    echo -e "How should the commands be added?"
+    echo -e "\033[01;34m01\033[0m. Shell functions in $(get_rc_file)"
+    echo -e "\033[01;34m02\033[0m. Simple executable commands in ${WRAPPER_DIR}"
+    echo -e "\033[01;34m00\033[0m. Do not add commands"
+    local CHOICE
+    read_menu_choice CHOICE
+    case "$CHOICE" in
+        1) SELECTED_INTEGRATION_METHOD=1 ;;
+        2) SELECTED_INTEGRATION_METHOD=2 ;;
+        0) SELECTED_INTEGRATION_METHOD=0 ;;
+        *) echo "Invalid option"; SELECTED_INTEGRATION_METHOD=0 ;;
+    esac
+}
+java_command_names() {
+    local JAVA_ID="$1"
+    local TOOL
+    while IFS= read -r TOOL; do
+        is_supported_tool_name "$TOOL" && printf '%s-%s\n' "$TOOL" "$JAVA_ID"
+    done < <(get_bin_tools "jdk-${JAVA_ID}")
+}
+category_command_names() {
+    local SLUG="$1"
+    local JAVA_ID="$2"
+    local TOOL
+    while IFS= read -r TOOL; do
+        is_supported_tool_name "$TOOL" && printf '%s-%s\n' "$TOOL" "$JAVA_ID"
+    done < <(get_bin_tools "$SLUG")
+}
+remove_java_own_integration() {
+    local NAME="$1"
+    local JAVA_ID OWNER
+    local STATUS=0
+    JAVA_ID=$(java_id "$NAME")
+    OWNER=$(integration_owner_java "$JAVA_ID")
+    local COMMANDS=()
+    mapfile -t COMMANDS < <(java_command_names "$JAVA_ID")
+    COMMANDS+=("java-${JAVA_ID}" "javac-${JAVA_ID}")
+    remove_integration_owner "$OWNER" "${COMMANDS[@]}" || STATUS=1
+    if [ "$IS_TERMUX" = true ] && [ -f "$CONTAINER_ROOT/root/.bashrc" ]; then
+        sed -i "/^alias java-$(escape_regex "$JAVA_ID")=/d" "$CONTAINER_ROOT/root/.bashrc" 2>/dev/null || STATUS=1
+    fi
+    return "$STATUS"
+}
+remove_category_integration_for_java() {
+    local SLUG="$1"
+    local JAVA_ID="$2"
+    local OWNER
+    OWNER=$(integration_owner_category "$SLUG" "$JAVA_ID")
+    local COMMANDS=()
+    mapfile -t COMMANDS < <(category_command_names "$SLUG" "$JAVA_ID")
+    remove_integration_owner "$OWNER" "${COMMANDS[@]}"
+}
+remove_java_dependent_integrations() {
+    local JAVA_ID="$1"
+    local INDEX SLUG
+    local STATUS=0
+    echo -e "Removing Maven and other commands linked to Java ${JAVA_ID}..."
+    for INDEX in "${!CATEGORY_NAMES[@]}"; do
+        [ "${CATEGORY_NAMES[$INDEX]}" = "Java" ] && continue
+        SLUG="${CATEGORY_SLUGS[$INDEX]}"
+        remove_category_integration_for_java "$SLUG" "$JAVA_ID" || STATUS=1
+    done
+    remove_manifest_integrations_for_java "$JAVA_ID" || STATUS=1
+    remove_managed_rc_blocks_for_java "$JAVA_ID" || STATUS=1
+    remove_legacy_java_entries_from_rc "$JAVA_ID" || STATUS=1
+    remove_java_linked_system_commands "$JAVA_ID" || STATUS=1
+    return "$STATUS"
+}
+remove_all_category_integrations() {
+    local SLUG="$1"
+    local NAME JAVA_ID
+    local STATUS=0
+    for NAME in "${JAVA_NAMES[@]}"; do
+        JAVA_ID=$(java_id "$NAME")
+        remove_category_integration_for_java "$SLUG" "$JAVA_ID" || STATUS=1
+    done
+    if [ -d "$INTEGRATION_DIR" ]; then
+        local MANIFEST BASENAME OWNER
+        local OWNERS=()
+        for MANIFEST in \
+            "$INTEGRATION_DIR"/"$SLUG"-java-*.tools \
+            "$INTEGRATION_DIR"/"$SLUG"-java-*.system-commands; do
+            [ -e "$MANIFEST" ] || continue
+            BASENAME=$(basename "$MANIFEST")
+            OWNER="${BASENAME%.tools}"
+            OWNER="${OWNER%.system-commands}"
+            OWNERS+=("$OWNER")
+        done
+        if [ ${#OWNERS[@]} -gt 0 ]; then
+            mapfile -t OWNERS < <(printf '%s\n' "${OWNERS[@]}" | awk 'NF && !seen[$0]++')
+            for OWNER in "${OWNERS[@]}"; do
+                remove_integration_owner "$OWNER" || STATUS=1
+            done
+        fi
+    fi
+    return "$STATUS"
+}
+prompt_java_integration() {
+    local NAME="$1"
+    local JAVA_ID
+    JAVA_ID=$(java_id "$NAME")
+    local TOOLS=()
+    mapfile -t TOOLS < <(get_bin_tools "jdk-${JAVA_ID}")
+    if [ ${#TOOLS[@]} -eq 0 ]; then
+        echo -e "\033[01;31mNo executable files found in $BASE_DIR/jdk-${JAVA_ID}/bin.\033[0m"
+        return 1
+    fi
+    prompt_integration_method
+    [ "$SELECTED_INTEGRATION_METHOD" = "0" ] && return 0
+    local OWNER
+    OWNER=$(integration_owner_java "$JAVA_ID")
+    register_tool_integration "$OWNER" "$JAVA_ID" "" "$SELECTED_INTEGRATION_METHOD" "${TOOLS[@]}"
+}
+do_install_java() {
+    local NAME="$1"
+    local RAW_URL="$2"
+    local RESOLVED
+    RESOLVED=$(resolve_url "$RAW_URL")
+    if [ -z "$RESOLVED" ]; then
+        echo -e "\033[01;31m${NAME} is not available for ${SYSTEM_ARCH} architecture\033[0m"
+        return 1
+    fi
+    local ID
+    ID=$(java_id "$NAME")
+    local JDK="jdk-${ID}"
+    ensure_container || return 1
+    echo "Downloading ${NAME}..."
+    local TMPFILE
+    TMPFILE=$(mktemp "${TMPDIR:-/tmp}/easy-java-${ID}.XXXXXX") || return 1
+    if ! download_asset "$RESOLVED" "$TMPFILE" || [ ! -s "$TMPFILE" ]; then
+        echo -e "\033[01;31mDownload failed\033[0m"
+        rm -f "$TMPFILE"
+        return 1
+    fi
+    echo "Installing ${NAME}..."
+    if ! install_extract_targz "$TMPFILE" "$BASE_DIR/$JDK"; then
+        echo -e "\033[01;31mInstallation failed while extracting the archive\033[0m"
+        rm -f "$TMPFILE"
+        return 1
+    fi
+    rm -f "$TMPFILE"
+    if [ ! -x "$BASE_DIR/$JDK/bin/java" ]; then
+        echo -e "\033[01;31mInstallation failed: bin/java was not found or is not executable\033[0m"
+        return 1
+    fi
+    echo -e "${NAME} \033[01;32minstalled\033[0m to $BASE_DIR/$JDK"
+}
+do_remove_java() {
+    local NAME="$1"
+    local ID JDK
+    ID=$(java_id "$NAME")
+    JDK="jdk-${ID}"
+    echo "Removing ${NAME}..."
+    local CLEANUP_STATUS=0
+    remove_java_own_integration "$NAME" || CLEANUP_STATUS=1
+    remove_java_dependent_integrations "$ID" || CLEANUP_STATUS=1
+    if [ "$CLEANUP_STATUS" -ne 0 ]; then
+        echo -e "\033[01;31mCould not remove all commands linked to ${NAME}; the JDK was not deleted.\033[0m"
+        return 1
+    fi
+    if [ "$IS_TERMUX" = false ]; then
+        run_as_root rm -rf "${BASE_DIR:?}/$JDK" || return 1
+    else
+        rm -rf "${BASE_DIR:?}/$JDK" || return 1
+    fi
+    echo -e "${NAME} \033[01;31mremoved\033[0m"
+    echo -e "\033[01;33mRestart the current shell to clear functions or aliases that were already loaded in memory.\033[0m"
+}
+do_install_category() {
+    local CATEGORY="$1"
+    local SLUG="$2"
+    local NAME="$3"
+    local RAW_URL="$4"
+    require_installed_java "$CATEGORY" "install" || return 1
+    local RESOLVED
+    RESOLVED=$(resolve_url "$RAW_URL")
+    if [ -z "$RESOLVED" ]; then
+        echo -e "\033[01;31m${NAME} is not available for ${SYSTEM_ARCH} architecture\033[0m"
+        return 1
+    fi
+    ensure_container || return 1
+    echo "Downloading ${NAME}..."
+    local TMPFILE
+    TMPFILE=$(mktemp "${TMPDIR:-/tmp}/easy-java-${SLUG}.XXXXXX") || return 1
+    if ! download_asset "$RESOLVED" "$TMPFILE" || [ ! -s "$TMPFILE" ]; then
+        echo -e "\033[01;31mDownload failed\033[0m"
+        rm -f "$TMPFILE"
+        return 1
+    fi
+    echo "Installing ${NAME}..."
+    if ! install_extract_auto "$TMPFILE" "$BASE_DIR/$SLUG"; then
+        echo -e "\033[01;31mInstallation failed while extracting the archive\033[0m"
+        rm -f "$TMPFILE"
+        return 1
+    fi
+    rm -f "$TMPFILE"
+    if [ ! -d "$BASE_DIR/$SLUG/bin" ] || [ -z "$(get_bin_tools "$SLUG" | head -n 1)" ]; then
+        echo -e "\033[01;31mInstallation failed: no executable tools were found in bin/\033[0m"
+        return 1
+    fi
+    if [ "$IS_TERMUX" = false ]; then
+        printf '%s\n' "$NAME" | run_as_root tee "$BASE_DIR/$SLUG/.version" > /dev/null || return 1
+    else
+        printf '%s\n' "$NAME" > "$BASE_DIR/$SLUG/.version" || return 1
+    fi
+    echo -e "${NAME} \033[01;32minstalled\033[0m to $BASE_DIR/$SLUG"
+}
+do_remove_category() {
+    local CATEGORY="$1"
+    local SLUG="$2"
+    echo "Removing ${CATEGORY}..."
+    if ! remove_all_category_integrations "$SLUG"; then
+        echo -e "\033[01;31mCould not remove all ${CATEGORY} commands; the installation was not deleted.\033[0m"
+        return 1
+    fi
+    if [ "$IS_TERMUX" = false ]; then
+        run_as_root rm -rf "${BASE_DIR:?}/${SLUG}" || return 1
+    else
+        rm -rf "${BASE_DIR:?}/${SLUG}" || return 1
+    fi
+    echo -e "${CATEGORY} \033[01;31mremoved\033[0m"
+    echo -e "\033[01;33mRestart the current shell to clear functions or aliases that were already loaded in memory.\033[0m"
+}
+prompt_category_java_link() {
+    local CATEGORY="$1"
+    local SLUG="$2"
+    require_installed_java "$CATEGORY commands" "create" || return 1
+    local INSTALLED_JAVAS=()
+    mapfile -t INSTALLED_JAVAS < <(get_installed_java_names)
+
+    echo -e "Create ${CATEGORY} commands for which Java version?"
+    local I
+    for I in "${!INSTALLED_JAVAS[@]}"; do
+        echo -e "\033[01;34m$(printf "%02d" $((I+1)))\033[0m. ${INSTALLED_JAVAS[$I]}"
+    done
+    echo -e "\033[01;34m$(printf "%02d" $((${#INSTALLED_JAVAS[@]}+1)))\033[0m. All installed versions"
+    echo -e "\033[01;34m00\033[0m. Cancel"
+    local CHOICE
+    read_menu_choice CHOICE
+
+    local SELECTED_JAVAS=()
+    if [[ "$CHOICE" =~ ^[0-9]+$ ]] && [ "$CHOICE" -ge 1 ] && [ "$CHOICE" -le "${#INSTALLED_JAVAS[@]}" ]; then
+        SELECTED_JAVAS+=("${INSTALLED_JAVAS[$((CHOICE-1))]}")
+    elif [[ "$CHOICE" =~ ^[0-9]+$ ]] && [ "$CHOICE" -eq "$((${#INSTALLED_JAVAS[@]}+1))" ]; then
+        SELECTED_JAVAS=("${INSTALLED_JAVAS[@]}")
+    else
+        return
+    fi
+
+    prompt_integration_method
+    [ "$SELECTED_INTEGRATION_METHOD" = "0" ] && return 0
+
+    local TOOLS=()
+    mapfile -t TOOLS < <(get_bin_tools "$SLUG")
+    if [ ${#TOOLS[@]} -eq 0 ]; then
+        echo -e "\033[01;31mNo executable files found in $BASE_DIR/$SLUG/bin.\033[0m"
+        return 1
+    fi
+
+    local JAVA_NAME JAVA_ID OWNER
+    for JAVA_NAME in "${SELECTED_JAVAS[@]}"; do
+        JAVA_ID=$(java_id "$JAVA_NAME")
+        OWNER=$(integration_owner_category "$SLUG" "$JAVA_ID")
+        register_tool_integration "$OWNER" "$JAVA_ID" "$SLUG" "$SELECTED_INTEGRATION_METHOD" "${TOOLS[@]}"
+    done
+}
+java_menu() {
+    while true; do
+        echo -e ""
+        echo -e "\033[01;33mJava (${SYSTEM_ARCH}):\033[0m"
+        if [ ${#JAVA_NAMES[@]} -eq 0 ]; then
+            echo -e "\033[01;31mNo Java versions found in versions.json\033[0m"
+        fi
+        for i in "${!JAVA_NAMES[@]}"; do
+            local NAME="${JAVA_NAMES[$i]}"
+            local RESOLVED
+            RESOLVED=$(resolve_url "${JAVA_URLS[$i]}")
+            local STATUS=""
+            if [ -n "$RESOLVED" ]; then
+                is_java_installed "$NAME" && STATUS=" \033[01;32m[installed]\033[0m"
+                printf "\033[01;34m%02d\033[0m. %s%b\n" "$((i+1))" "$NAME" "$STATUS"
+            else
+                printf "\033[01;34m%02d\033[0m. %s \033[01;31m[unavailable]\033[0m\n" "$((i+1))" "$NAME"
+            fi
+        done
+        printf "\033[01;34m00\033[0m. Back\n"
+        read_menu_choice choice
+        local MAX="${#JAVA_NAMES[@]}"
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$MAX" ]; then
+            local NAME="${JAVA_NAMES[$((choice-1))]}"
+            local RAW_URL="${JAVA_URLS[$((choice-1))]}"
+            local RESOLVED
+            RESOLVED=$(resolve_url "$RAW_URL")
+            if [ -z "$RESOLVED" ]; then
+                echo -e "\033[01;31m${NAME} is not available for ${SYSTEM_ARCH} architecture\033[0m"
+                continue
+            fi
+            echo -e ""
+            if is_java_installed "$NAME"; then
+                echo -e "\033[01;34m01\033[0m. Reinstall ${NAME}"
+                echo -e "\033[01;34m02\033[0m. Delete ${NAME}"
+                echo -e "\033[01;34m03\033[0m. Re-add commands"
+                echo -e "\033[01;34m00\033[0m. Back"
+                read_menu_choice sub
+                case "$sub" in
+                    1) if do_install_java "$NAME" "$RAW_URL"; then remove_java_own_integration "$NAME"; prompt_java_integration "$NAME"; fi ;;
+                    2) do_remove_java "$NAME" ;;
+                    3) remove_java_own_integration "$NAME"; prompt_java_integration "$NAME" ;;
+                esac
+            else
+                echo -e "\033[01;34m01\033[0m. Download ${NAME}"
+                echo -e "\033[01;34m00\033[0m. Back"
+                read_menu_choice sub
+                if [ "$sub" = "1" ]; then
+                    if do_install_java "$NAME" "$RAW_URL"; then
+                        prompt_java_integration "$NAME"
+                    fi
+                fi
+            fi
+        elif [ "$choice" = "0" ]; then
+            break
+        else
+            echo "Invalid option"
+        fi
+    done
+}
+generic_menu() {
+    local CATEGORY="$1"
+    local SLUG="$2"
+    local -n NAMES_REF="NAMES_${SLUG}"
+    local -n URLS_REF="URLS_${SLUG}"
+    if ! has_installed_java; then
+        if ! is_category_installed "$SLUG"; then
+            require_installed_java "$CATEGORY" "install"
+            return
+        fi
+        echo -e "\033[01;33m${CATEGORY} is installed, but no Java version is installed. It cannot run until Java is installed; deletion remains available.\033[0m"
+    fi
+    while true; do
+        echo -e ""
+        echo -e "\033[01;33m${CATEGORY}:\033[0m"
+        if [ ${#NAMES_REF[@]} -eq 0 ]; then
+            echo -e "\033[01;31mNo ${CATEGORY} versions found in versions.json\033[0m"
+        fi
+        local VER_INSTALLED
+        VER_INSTALLED=$(get_category_version "$SLUG")
+        for i in "${!NAMES_REF[@]}"; do
+            local ENAME="${NAMES_REF[$i]}"
+            local RESOLVED
+            RESOLVED=$(resolve_url "${URLS_REF[$i]}")
+            local STATUS=""
+            if [ -n "$RESOLVED" ]; then
+                [ "$ENAME" = "$VER_INSTALLED" ] && STATUS=" \033[01;32m[installed]\033[0m"
+                printf "\033[01;34m%02d\033[0m. %s%b\n" "$((i+1))" "$ENAME" "$STATUS"
+            else
+                printf "\033[01;34m%02d\033[0m. %s \033[01;31m[unavailable]\033[0m\n" "$((i+1))" "$ENAME"
+            fi
+        done
+        local NEXT=$((${#NAMES_REF[@]}+1))
+        printf "\033[01;34m%02d\033[0m. Manage commands\n" "$NEXT"
+        printf "\033[01;34m00\033[0m. Back\n"
+        read_menu_choice choice
+        local MAX="${#NAMES_REF[@]}"
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$MAX" ]; then
+            local ENAME="${NAMES_REF[$((choice-1))]}"
+            local RAW_URL="${URLS_REF[$((choice-1))]}"
+            local RESOLVED
+            RESOLVED=$(resolve_url "$RAW_URL")
+            if [ -z "$RESOLVED" ]; then
+                echo -e "\033[01;31m${ENAME} is not available for ${SYSTEM_ARCH} architecture\033[0m"
+                continue
+            fi
+            echo -e ""
+            if [ "$ENAME" = "$VER_INSTALLED" ]; then
+                if has_installed_java; then
+                    echo -e "\033[01;34m01\033[0m. Reinstall ${ENAME}"
+                    echo -e "\033[01;34m02\033[0m. Delete ${ENAME}"
+                    echo -e "\033[01;34m03\033[0m. Re-add commands"
+                    echo -e "\033[01;34m00\033[0m. Back"
+                    read_menu_choice sub
+                    case "$sub" in
+                        1) if do_install_category "$CATEGORY" "$SLUG" "$ENAME" "$RAW_URL"; then remove_all_category_integrations "$SLUG"; prompt_category_java_link "$CATEGORY" "$SLUG"; fi ;;
+                        2) do_remove_category "$CATEGORY" "$SLUG" ;;
+                        3) remove_all_category_integrations "$SLUG"; prompt_category_java_link "$CATEGORY" "$SLUG" ;;
+                    esac
+                else
+                    echo -e "\033[01;31m${CATEGORY} cannot run or be reinstalled because no Java version is installed.\033[0m"
+                    echo -e "\033[01;34m02\033[0m. Delete ${ENAME}"
+                    echo -e "\033[01;34m00\033[0m. Back"
+                    read_menu_choice sub
+                    [ "$sub" = "2" ] && do_remove_category "$CATEGORY" "$SLUG"
+                fi
+            else
+                if ! has_installed_java; then
+                    require_installed_java "$CATEGORY" "install"
+                else
+                    echo -e "\033[01;34m01\033[0m. Download ${ENAME}"
+                    echo -e "\033[01;34m00\033[0m. Back"
+                    read_menu_choice sub
+                    [ "$sub" = "1" ] && { do_install_category "$CATEGORY" "$SLUG" "$ENAME" "$RAW_URL" && prompt_category_java_link "$CATEGORY" "$SLUG"; }
+                fi
+            fi
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -eq "$NEXT" ]; then
+            if ! is_category_installed "$SLUG"; then
+                echo "${CATEGORY} is not installed. Install ${CATEGORY} first."
+            elif ! has_installed_java; then
+                require_installed_java "$CATEGORY commands" "create"
+            else
+                prompt_category_java_link "$CATEGORY" "$SLUG"
+            fi
+        elif [ "$choice" = "0" ]; then
+            break
+        else
+            echo "Invalid option"
+        fi
+    done
+}
+manual_launch() {
+    ensure_container || return 1
+    echo -e "Launching \033[01;34mproot shell\033[0m..."
+    unset LD_PRELOAD
+    proot -0 --link2symlink -r "$CONTAINER_ROOT" -w /root \
+        -b /dev/ -b /sys/ -b /proc/ \
+        -b "$HOME" \
+        /usr/bin/env -i HOME=/root TERM="xterm-256color" \
+        PATH=/bin:/usr/bin:/sbin:/usr/sbin /bin/bash
+}
+while true; do
+    echo -e ""
+    echo -e "\033[01;33mv${VERSION}\033[0m"
+    N=${#CATEGORY_NAMES[@]}
+    for i in "${!CATEGORY_NAMES[@]}"; do
+        printf "\033[01;34m%02d\033[0m. %s\n" "$((i+1))" "${CATEGORY_NAMES[$i]}"
+    done
+    if [ "$IS_TERMUX" = true ]; then
+        printf "\033[01;34m%02d\033[0m. Manual\n" "$((N+1))"
+    fi
+    printf "\033[01;34m00\033[0m. Quit\n"
+    read_menu_choice mode
+    if [[ "$mode" =~ ^[0-9]+$ ]] && [ "$mode" -ge 1 ] && [ "$mode" -le "$N" ]; then
+        SEL_CAT="${CATEGORY_NAMES[$((mode-1))]}"
+        SEL_SLUG="${CATEGORY_SLUGS[$((mode-1))]}"
+        if [ "$SEL_CAT" = "Java" ]; then
+            java_menu
+        else
+            generic_menu "$SEL_CAT" "$SEL_SLUG"
+        fi
+    elif [ "$IS_TERMUX" = true ] && [[ "$mode" =~ ^[0-9]+$ ]] && [ "$mode" -eq "$((N+1))" ]; then
+        manual_launch
+        break
+    elif [ "$mode" = "0" ]; then
+        exit 0
+    else
+        echo "Invalid option"
+    fi
+done

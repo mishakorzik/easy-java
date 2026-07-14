@@ -187,9 +187,9 @@ ensure_gdown() {
         fi
     fi
     if [ "$IS_TERMUX" = true ]; then
-        python3 -m pip install gdown
+        python3 -m pip install gdown --break-system-packages
     else
-        run_as_root python3 -m pip install gdown
+        run_as_root python3 -m pip install gdown --break-system-packages
     fi
 }
 

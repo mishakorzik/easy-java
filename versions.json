@@ -20,6 +20,7 @@
     {"name": "Maven 3.8.9", "url": "https://archive.apache.org/dist/maven/maven-3/3.8.9/binaries/apache-maven-3.8.9-bin.tar.gz"}
   ],
   "Gradle": [
+    {"name": "Gradle 9.7.1", "url": "https://services.gradle.org/distributions/gradle-9.7.1-bin.zip"},
     {"name": "Gradle 9.6.1", "url": "https://services.gradle.org/distributions/gradle-9.6.1-bin.zip"},
     {"name": "Gradle 9.6.0", "url": "https://services.gradle.org/distributions/gradle-9.6.0-bin.zip"},
     {"name": "Gradle 9.5.1", "url": "https://services.gradle.org/distributions/gradle-9.5.1-bin.zip"},

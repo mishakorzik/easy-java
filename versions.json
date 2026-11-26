@@ -1,16 +1,16 @@
 {
   "Java": [
-    {"name": "Java 25", "url": {"arm64": "19_sCfGu7utK7X8mQntaw5rG5hujpaxeD", "x86_64": "13kNIYApQVOs22RcuHot6cyop0N-21GIE"}},
+    {"name": "Java 25", "url": {"arm64": "15rElMrjXoGNEIW4onfzWbnLaKr9Zhace", "x86_64": "1FNDxl-4-yChz_rTFgiRBe36IRq0FnjE2"}},
     {"name": "Java 24", "url": {"arm64": "1tiQgFxp159Sbzaz3mR75Ubu6jmfWdFHy", "x86_64": "1O0TtrWuLsD1-ypJrvcZadKRCJ0Prn-Bg"}},
     {"name": "Java 22", "url": {"arm64": "1FUy39jp_SBEqQCM_VCxzA-C0VvQo6qBA", "x86_64": "17uyLY0wkfewYOHmeoil2zn5fPU9p5xJ5"}},
-    {"name": "Java 21", "url": {"arm64": "1Q4T8ZA0C6V_cfDkYSIY1_QAw8dx6Grfr", "x86_64": "1k1Utg_eTLrNVCyYzAivga3QLp9H9Qd09"}},
+    {"name": "Java 21", "url": {"arm64": "1gEl5qFgMMzKAjHvIDFtIktCVZqi2qbpe", "x86_64": "1lWSI7c5UdSvgCQvFCK7JzG70y5V5kMR5"}},
     {"name": "Java 20", "url": {"arm64": "17V6Y7khQZvt2dIvaqpI5cjVmtrQvpaQo"}},
     {"name": "Java 19", "url": {"arm64": "1_lEitg91FWm4emuD1uamA7arl69MALEX"}},
-    {"name": "Java 17", "url": {"arm64": "1TIm71eN7srNf6n1W22HMkgbQKsRwJ8Ql", "x86_64": "1l9lPJ5yFWAiN9FV_IVOsW2cJi1oikJ9P"}},
+    {"name": "Java 17", "url": {"arm64": "1laFekV6xUHMX1LOqs_9RuMZkwHmV98sE", "x86_64": "19Ga5SqxyqA93rM_Iuv1AUtwaJgIixfaR"}},
     {"name": "Java 16", "url": {"arm64": "1pjn8TrYY4CHkWV3OX840NgxQnymRJFMM", "x86_64": "1KaeQNZBzkVrvmFi3M89F0mHvep-1qzt_"}},
     {"name": "Java 15", "url": {"arm64": "1FLtZKNmN0h_wSVlDRBYb6hC-vgQuZ2UE", "x86_64": "1qjIH9d_ILf-Lb6xp4jYMc5-ttkq290e7"}},
-    {"name": "Java 11", "url": {"arm64": "15bdPrYjl7f_wLHagetS-hM5mrEv0oe9J", "x86_64": "1OHKvUyKngNbVU7ShMyzCUa256MhdkKBl"}},
-    {"name": "Java 8", "url": {"arm64": "1Kk0rI-yfCoUnFbIjiZgez9cwWeukXgFQ", "x86_64": "1JBs8w75o19-22DqmovEKvIzPli48HfGg"}}
+    {"name": "Java 11", "url": {"arm64": "15rElMrjXoGNEIW4onfzWbnLaKr9Zhace", "x86_64": "1V0RrozZuSspvBIkc_jMRn90OWuxD_WDO"}},
+    {"name": "Java 8", "url": {"arm64": "1u3IfZt29jc3HgBtE6G67qUOMiIET6tZJ", "x86_64": "1KW8YYFGVjwFipq4zL0IQEAAS8cUTfl0S"}}
   ],
   "Maven": [
     {"name": "Maven 3.9.16", "url": "https://archive.apache.org/dist/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.tar.gz"},
